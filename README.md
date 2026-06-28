@@ -1,2 +1,0 @@
-# quinielas
-Resultados quinielas
