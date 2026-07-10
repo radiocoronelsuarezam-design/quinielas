@@ -6,11 +6,11 @@
     <title>Pizarra de Quinielas Oficiales</title>
     <style>
         /* ==========================================================================
-           Diseño Premium y Limpio (Fondo Blanco / Estilo Corporativo)
+           Diseño Premium y Limpio (Fondo Blanco)
            ========================================================================== */
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background-color: #f8fafc; /* Gris ultra claro de fondo general */
+            background-color: #f8fafc;
             color: #0f172a;
             padding: 40px 15px;
             display: flex;
@@ -21,7 +21,7 @@
         #panel-quiniela {
             width: 100%;
             max-width: 520px;
-            background: #ffffff; /* Fondo blanco para el contenedor principal */
+            background: #ffffff;
             border-radius: 20px;
             box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
             border: 1px solid #e2e8f0;
@@ -35,7 +35,7 @@
             font-weight: 500;
         }
 
-        /* Cabecera del Panel */
+        /* Cabecera Solicitada */
         .cabecera-oficial {
             display: flex;
             justify-content: space-between;
@@ -64,7 +64,7 @@
             border: 1px solid #e2e8f0;
         }
 
-        /* Estructura GRID Inteligente */
+        /* Estructura GRID de las columnas */
         .tabla-grid {
             padding: 16px;
             display: flex;
@@ -74,13 +74,13 @@
 
         .fila-grid {
             display: grid;
-            grid-template-columns: 2.2fr repeat(5, 1fr); /* Espacio optimizado para nombres y números */
+            grid-template-columns: 2.2fr repeat(5, 1fr); 
             align-items: center;
             padding: 12px 4px;
             border-bottom: 1px solid #f8fafc;
         }
 
-        /* Cabecera de Turnos (Horarios) */
+        /* Encabezados de Turnos */
         .cabecera-grid {
             background-color: #f8fafc;
             border-bottom: 2px solid #e2e8f0;
@@ -113,11 +113,11 @@
             text-align: center;
         }
 
-        /* Diseño de los números */
+        /* Diseño de las celdas numéricas */
         .badge-numero {
             font-size: 13px;
             font-weight: 600;
-            color: #cbd5e1; /* Gris claro por defecto (----) */
+            color: #cbd5e1; /* Gris claro para los '----' */
             background: #f8fafc;
             padding: 6px 2px;
             border-radius: 6px;
@@ -126,10 +126,10 @@
             font-family: system-ui, -apple-system, sans-serif;
         }
 
-        /* Resaltado para Números Ganadores Sorteados */
+        /* Destacado Verde Éxito para cuando ya hay sorteo */
         .numero-activo {
-            color: #166534 !important; /* Verde oscuro elegante */
-            background: #dcfce7 !important; /* Fondo verde pastel sutil */
+            color: #166534 !important;
+            background: #dcfce7 !important;
             font-weight: 700 !important;
         }
 
@@ -156,7 +156,7 @@
         const proxyUrl = "https://corsproxy.io/?";
         const targetUrl = "https://www.tujugada.com.ar/data/qlas/cabezas_web.htm";
 
-        // Listado exacto de las provincias en el orden en que aparecen para mapearlas sin errores
+        // Mapeo estricto para validar las filas correspondientes
         const provinciasObjetivo = [
             "Ciudad", "Provincia", "Santa Fe", "Cordoba", "Mendoza", 
             "Entre Rios", "Corrientes", "Neuquen", "Rio Negro", "Chaco", "Jujuy", "Formosa"
@@ -171,8 +171,8 @@
                 const parser = new DOMParser();
                 const docInterno = parser.parseFromString(textoHtml, 'text/html');
 
-                // 1. EXTRAER LA FECHA DE LA CABECERA ORIGINAL
-                let fechaEncontrada = "10/7/2026"; // Fecha por defecto basada en tu archivo
+                // 1. RECOGIDA DE LA FECHA
+                let fechaEncontrada = "--/--/----";
                 const todosLosFuentes = docInterno.querySelectorAll('font');
                 for (let font of todosLosFuentes) {
                     if (font.textContent.includes("FECHA:")) {
@@ -185,76 +185,48 @@
                 }
                 document.getElementById('fecha-sorteo').textContent = fechaEncontrada;
 
-                // 2. EXTRAER NÚMEROS DE FORMA LIMPIA
+                // Diccionario donde guardaremos los 5 números ordenados de cada provincia
                 let datosLoterias = {};
                 provinciasObjetivo.forEach(p => datosLoterias[p] = []);
 
-                // Buscamos todas las celdas de la página vieja
-                const todasLasCeldas = docInterno.querySelectorAll('td');
-                
-                todasLasCeldas.forEach((celda) => {
-                    const textoCelda = celda.textContent.trim();
+                // 2. EXTRACTOR PRECISO POR FILAS INDEPENDIENTES
+                // Buscamos todas las filas de la tabla original
+                const todasLasFilas = docInterno.querySelectorAll('tr');
+
+                todasLasFilas.forEach(fila => {
+                    // Buscamos si dentro de esta fila en particular se menciona alguna provincia
+                    const textoFila = fila.textContent.trim();
                     
-                    // Si la celda coincide exactamente con una de nuestras provincias
-                    if (provinciasObjetivo.includes(textoCelda)) {
-                        let filaActual = celda.closest('tr');
-                        if (filaActual) {
-                            // Conseguimos todas las celdas hermanas de esta fila de la provincia
-                            const celdasHermanas = filaActual.querySelectorAll('td');
+                    provinciasObjetivo.forEach(provincia => {
+                        // Si la fila contiene el nombre exacto (ej: "Santa Fe") y todavía no guardamos sus datos
+                        if (textoFila.startsWith(provincia) && datosLoterias[provincia].length === 0) {
                             
-                            // Iteramos buscando los 5 bloques numéricos que le siguen
-                            let contenedorPadre = filaActual.closest('table'); // Subimos a su mini tabla contenedora
-                            if (contenedorPadre) {
-                                let tablaPrincipal = contenedorPadre.closest('td')?.closest('tr')?.closest('table');
-                                if (tablaPrincipal) {
-                                    // Buscamos los valores numéricos secuenciales reales
-                                    let celdasDeNumeros = filaActual.parentElement.querySelectorAll('td b font');
-                                    let numerosFila = [];
-                                    celdasDeNumeros.forEach(n => {
-                                        const txt = n.textContent.trim();
-                                        if (txt.length === 4 || txt === "----") {
-                                            numerosFila.push(txt);
-                                        }
-                                    });
-                                    // Guardamos solo los primeros 5 resultados correspondientes a los turnos
-                                    if (numerosFila.length >= 5) {
-                                        datosLoterias[textoCelda] = numerosFila.slice(0, 5);
-                                    }
+                            // Extraemos todos los bloques de fuentes (<font>) que estén dentro de esta FILA específica
+                            const fuentesDeLaFila = fila.querySelectorAll('font');
+                            let numerosDetectados = [];
+
+                            fuentesDeLaFila.forEach(font => {
+                                const valor = font.textContent.trim();
+                                // Si es un número de 4 dígitos o los guiones tradicionales, lo guardamos
+                                if (valor.length === 4 || valor === "----") {
+                                    numerosDetectados.push(valor);
                                 }
+                            });
+
+                            // Una quiniela válida tiene que registrar exactamente 5 turnos (columnas)
+                            if (numerosDetectados.length >= 5) {
+                                // Guardamos los primeros 5 en el orden exacto de aparición (Prev, Prim, Matu, Vesp, Noct)
+                                datosLoterias[provincia] = numerosDetectados.slice(0, 5);
                             }
                         }
-                    }
+                    });
                 });
 
-                // Fallback de seguridad: si el parseo anidado falla por las mini-tablas, extraemos directo por texto secuencial
-                provinciasObjetivo.forEach(prov => {
-                    if (datosLoterias[prov].length === 0) {
-                        let textosPlanos = [];
-                        let habilitarCaptura = false;
-                        
-                        docInterno.querySelectorAll('td').forEach(td => {
-                            let txt = td.textContent.trim();
-                            if (txt === prov) {
-                                habilitarCaptura = true;
-                                return;
-                            }
-                            if (habilitarCaptura && (txt.length === 4 || txt === "----") && textosPlanos.length < 5) {
-                                textosPlanos.push(txt);
-                            } else if (textosPlanos.length === 5) {
-                                habilitarCaptura = false;
-                            }
-                        });
-                        if (textosPlanos.length === 5) {
-                            datosLoterias[prov] = textosPlanos;
-                        }
-                    }
-                });
-
-                // 3. CONSTRUIR EL NUEVO DISEÑO GRID DESDE CERO
+                // 3. CONSTRUCCIÓN DEL NUEVO PANEL HTML (100% LIMPIO)
                 const gridContenedor = document.getElementById('grid-resultados');
                 gridContenedor.innerHTML = "";
 
-                // Generar Fila Estática de Encabezados (Sincronizada con los horarios reales de la imagen)
+                // Inyectar Encabezados de Horarios
                 const filaHeader = document.createElement('div');
                 filaHeader.className = "fila-grid cabecera-grid";
                 filaHeader.innerHTML = `
@@ -267,17 +239,18 @@
                 `;
                 gridContenedor.appendChild(filaHeader);
 
-                // Generar las filas ordenadas con los datos limpios extraídos
+                // Inyectar las filas correspondientes de datos
                 provinciasObjetivo.forEach(provincia => {
                     const arrayNumeros = datosLoterias[provincia];
                     
-                    // Solo agregamos la fila si contiene los datos completos
                     if (arrayNumeros && arrayNumeros.length === 5) {
                         const filaItem = document.createElement('div');
                         filaItem.className = "fila-grid";
                         
+                        // Nombre de la lotería
                         filaItem.innerHTML += `<div class="celda-provincia">${provincia}</div>`;
                         
+                        // Recorremos los 5 números asignados uno por uno respetando su columna original
                         arrayNumeros.forEach(num => {
                             const esActivo = num && num !== "----" && num.trim() !== "" ? "numero-activo" : "";
                             filaItem.innerHTML += `
@@ -290,18 +263,19 @@
                     }
                 });
 
-                // Renderizado exitoso
+                // Cambiar estados visuales
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('panel-quiniela').style.display = 'block';
 
             } catch (error) {
                 console.error("Error en la extracción:", error);
                 document.getElementById('loader').innerHTML = 
-                    "Error de conexión con la pizarra oficial. Reintentando...";
+                    "Sincronizando con el servidor de loterías...";
                 setTimeout(cargarQuiniela, 4000);
             }
         }
 
+        // Lanzar proceso
         cargarQuiniela();
     </script>
 </body>
