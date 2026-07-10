@@ -185,37 +185,43 @@
                 }
                 document.getElementById('fecha-sorteo').textContent = fechaEncontrada;
 
-                // Diccionario de almacenamiento
+                // Diccionario de almacenamiento limpio
                 let datosLoterias = {};
                 provinciasObjetivo.forEach(p => datosLoterias[p] = []);
 
-                // 2. NUEVO EXTRACTOR SECUENCIAL GLOBAL (A PRUEBA DE FALLOS)
-                // Obtenemos absolutamente todas las celdas TD del documento remoto
+                // 2. NUEVO EXTRACTOR DE VALORES POR BLOQUES AISLADOS
                 const celdasGlobales = Array.from(docInterno.querySelectorAll('td'));
 
                 for (let i = 0; i < celdasGlobales.length; i++) {
                     const textoCelda = celdasGlobales[i].textContent.trim();
 
-                    // Si encontramos una celda que contiene exactamente una provincia de nuestra lista
+                    // Cuando machea exactamente con una provincia...
                     if (provinciasObjetivo.includes(textoCelda) && datosLoterias[textoCelda].length === 0) {
                         let numerosDeEstaProvincia = [];
                         
-                        // Avanzamos por las celdas que están inmediatamente después de la provincia
+                        // Avanzamos buscando secuencialmente solo valores que cumplan el formato
                         let j = i + 1;
                         while (j < celdasGlobales.length && numerosDeEstaProvincia.length < 5) {
                             const posibleNumero = celdasGlobales[j].textContent.trim();
                             
-                            // Si el texto es un número de 4 dígitos o los guiones de espera '----'
+                            // Si cruzamos otra provincia antes de completar las 5, frenamos para no duplicar datos
+                            if (provinciasObjetivo.includes(posibleNumero) && posibleNumero !== textoCelda) {
+                                break;
+                            }
+
+                            // Registramos únicamente números de 4 dígitos o los guiones '----'
                             if (posibleNumero.length === 4 || posibleNumero === "----") {
                                 numerosDeEstaProvincia.push(posibleNumero);
                             }
                             j++;
                         }
 
-                        // Si recolectamos correctamente las 5 posiciones consecutivas, las guardamos
-                        if (numerosDeEstaProvincia.length === 5) {
-                            datosLoterias[textoCelda] = numerosDeEstaProvincia;
+                        // Si por el desorden del HTML faltan columnas, rellenamos con '----' por seguridad
+                        while (numerosDeEstaProvincia.length < 5) {
+                            numerosDeEstaProvincia.push("----");
                         }
+
+                        datosLoterias[textoCelda] = numerosDeEstaProvincia;
                     }
                 }
 
@@ -236,7 +242,7 @@
                 `;
                 gridContenedor.appendChild(filaHeader);
 
-                // Inyectar Datos Mapeados por Columna
+                // Inyectar Datos Mapeados por Columna de manera exacta
                 provinciasObjetivo.forEach(provincia => {
                     const arrayNumeros = datosLoterias[provincia];
                     
