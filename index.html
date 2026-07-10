@@ -156,7 +156,7 @@
         const proxyUrl = "https://corsproxy.io/?";
         const targetUrl = "https://www.tujugada.com.ar/data/qlas/cabezas_web.htm";
 
-        // Provincias objetivo en el orden estricto de visualización
+        // Mapeo exacto de nombres como figuran en las etiquetas <a> del origen
         const provinciasObjetivo = [
             "Ciudad", "Provincia", "Santa Fe", "Cordoba", "Mendoza", 
             "Entre Rios", "Corrientes", "Neuquen", "Rio Negro", "Chaco", "Jujuy", "Formosa"
@@ -185,55 +185,52 @@
                 }
                 document.getElementById('fecha-sorteo').textContent = fechaEncontrada;
 
-                // Diccionario de datos limpio
+                // Estructura de almacenamiento
                 let datosLoterias = {};
                 provinciasObjetivo.forEach(p => datosLoterias[p] = []);
 
-                // 2. FILTRADO ESTRICTO POR FILAS CONTENEDORAS (TR)
-                const todasLasFilas = docInterno.querySelectorAll('tr');
+                // 2. BUSCADOR DIRECTO POR ENLACES DE PROVINCIAS (Estructura Indestructible)
+                const todosLosEnlaces = docInterno.querySelectorAll('a');
 
-                todasLasFilas.forEach(tr => {
-                    // Buscamos si dentro de este TR hay un enlace con el nombre de la provincia
-                    const enlaces = tr.querySelectorAll('a');
-                    let provinciaDetectada = null;
+                todosLosEnlaces.forEach(enlace => {
+                    const textoEnlace = enlace.textContent.trim();
 
-                    enlaces.forEach(a => {
-                        const textoEnlace = a.textContent.trim();
-                        if (provinciasObjetivo.includes(textoEnlace)) {
-                            provinciaDetectada = textoEnlace;
-                        }
-                    });
+                    if (provinciasObjetivo.includes(textoEnlace)) {
+                        // Buscamos la celda TD contenedora del enlace actual
+                        let celdaMadreTd = enlace.closest('td');
+                        if (!celdaMadreTd) return;
 
-                    // Si encontramos la provincia en esta fila, extraemos EXCLUSIVAMENTE sus 5 celdas numéricas
-                    if (provinciaDetectada && datosLoterias[provinciaDetectada].length === 0) {
-                        let numerosDeEstaFila = [];
-                        const todasLasCeldas = tr.querySelectorAll('td');
+                        // Subimos hasta la sub-tabla interna que contiene esta fila de números
+                        let subTabla = celdaMadreTd.closest('table');
+                        if (!subTabla) return;
 
-                        todasLasCeldas.forEach(td => {
-                            const textoCelda = td.textContent.trim();
-                            // Capturamos solo lo que sea un número de 4 dígitos o los guiones '----'
-                            if (textoCelda.length === 4 || textoCelda === "----") {
-                                numerosDeEstaFila.push(textoCelda);
+                        // El elemento que le sigue a la tabla del nombre contiene los números
+                        // Buscamos en el árbol hermano de la celda abuela o madre de la subtabla
+                        let tdAbuelo = subTabla.closest('td');
+                        if (!tdAbuelo) return;
+
+                        let numerosProvincia = [];
+                        let siguienteTd = tdAbuelo.nextElementSibling;
+
+                        // Avanzamos hacia la derecha recolectando exactamente las 5 celdas de números siguientes
+                        while (siguienteTd && numerosProvincia.length < 5) {
+                            const textoNum = siguienteTd.textContent.trim();
+                            
+                            // Validamos que sea un número de 4 cifras o el indicador de vacío "----"
+                            if (textoNum.length === 4 || textoNum === "----") {
+                                numerosProvincia.push(textoNum);
                             }
-                        });
-
-                        // El documento original a veces duplica elementos TD internamente por las subtablas.
-                        // Limpiamos duplicados consecutivos (como "----" seguidos en sub-celdas) manteniendo el orden.
-                        let numerosLimpios = [];
-                        for(let k = 0; k < numerosDeEstaFila.length; k++) {
-                            if (numerosDeEstaFila[k] !== numerosDeEstaFila[k-1]) {
-                                numerosLimpios.push(numerosDeEstaFila[k]);
-                            }
+                            siguienteTd = siguienteTd.nextElementSibling;
                         }
 
-                        // Guardamos exactamente las primeras 5 posiciones que corresponden a los 5 turnos
-                        if (numerosLimpios.length >= 5) {
-                            datosLoterias[provinciaDetectada] = numerosLimpios.slice(0, 5);
+                        // Guardamos el resultado limpio
+                        if (numerosProvincia.length === 5) {
+                            datosLoterias[textoEnlace] = numerosProvincia;
                         }
                     }
                 });
 
-                // 3. CONSTRUCCIÓN DEL PANEL GRÁFICO NUEVO
+                // 3. CONSTRUCCIÓN DEL PANEL GRÁFICO
                 const gridContenedor = document.getElementById('grid-resultados');
                 gridContenedor.innerHTML = "";
 
@@ -250,7 +247,7 @@
                 `;
                 gridContenedor.appendChild(filaHeader);
 
-                // Inyectar Datos Mapeados sin errores de cruce
+                // Inyectar Datos Mapeados sin errores
                 provinciasObjetivo.forEach(provincia => {
                     const arrayNumeros = datosLoterias[provincia];
                     
