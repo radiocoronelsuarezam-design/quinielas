@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tablero Oficial de Quinielas</title>
+    <title>Tablero de Quinielas Oficial</title>
     <style>
         /* ==========================================================================
-           Estilos Profesionales de Lotería (Modern Premium)
+           Diseño Profesional, Limpio y Corporativo (Fondo Blanco)
            ========================================================================== */
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background-color: #0f172a; /* Fondo oscuro premium */
-            color: #f8fafc;
-            padding: 40px 20px;
+            background-color: #f8fafc; /* Fondo general gris muy claro */
+            color: #1e293b;
+            padding: 30px 15px;
             display: flex;
             justify-content: center;
             margin: 0;
@@ -20,112 +20,106 @@
 
         #contenedor-quiniela {
             width: 100%;
-            max-width: 480px;
+            max-width: 450px;
         }
 
-        /* Reset profundo del HTML viejo */
+        /* Limpieza absoluta de los atributos antiguos del HTML original */
         #contenedor-quiniela table, 
         #contenedor-quiniela td, 
         #contenedor-quiniela tr {
             background: none !important;
             border: none !important;
+            font-family: 'Segoe UI', system-ui, sans-serif !important;
         }
 
-        /* Estructura del Tablero */
+        /* Contenedor principal de la tabla (Estilo tarjeta blanca) */
         .tabla-moderna {
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
-            background: #1e293b; /* Fondo de la tarjeta */
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            background: #ffffff; /* Fondo Blanco pedido */
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
             overflow: hidden;
-            border: 1px solid #334155;
+            border: 1px solid #e2e8f0;
         }
 
-        /* Cabecera Principal (Título del Sorteo) */
+        /* Fila del Título Principal (QUINIELA DE HOY) */
         .tabla-moderna tr:first-child td {
-            background: linear-gradient(135deg, #1e3a8a, #0d9488) !important; /* Azul a verde azulado */
-            padding: 20px !important;
+            background: #0f172a !important; /* Azul oscuro corporativo / casi negro */
+            padding: 16px !important;
             text-align: center;
-            border-bottom: 2px solid #334155;
-        }
-
-        /* Texto de la Fecha / Título */
-        .tabla-moderna tr:first-child td,
-        .tabla-moderna tr:first-child font {
-            color: #f8fafc !important;
-            font-weight: 800 !important;
+            font-weight: 700 !important;
             font-size: 15px !important;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
+            color: #ffffff !important;
             text-transform: uppercase;
-            font-family: system-ui, sans-serif;
         }
 
-        /* Cabecera de Turnos (Previa, Primera, Matutina...) */
+        /* Forzar color blanco para cualquier texto remanente en el título */
+        .tabla-moderna tr:first-child font,
+        .tabla-moderna tr:first-child b {
+            color: #ffffff !important;
+        }
+
+        /* Fila de Encabezados de Turnos (Previa, Primera, Matutina...) */
         .tabla-moderna tr:nth-child(2) td {
-            background-color: #0f172a !important;
+            background-color: #f1f5f9 !important; /* Gris claro sutil */
             padding: 12px 4px !important;
             text-align: center;
-            border-bottom: 2px solid #334155;
+            border-bottom: 2px solid #e2e8f0;
         }
 
         .tabla-moderna tr:nth-child(2) font {
-            color: #94a3b8 !important; /* Gris claro */
+            color: #475569 !important; /* Texto gris intermedio */
             font-weight: 700 !important;
             font-size: 11px !important;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        /* Filas de Loterías / Provincias */
+        /* Filas con datos de las loterías */
         .fila-datos {
             transition: background-color 0.2s ease;
         }
 
         .fila-datos:hover {
-            background-color: #24334d;
+            background-color: #f8fafc; /* Efecto hover sutil al pasar el mouse */
         }
 
-        /* Nombre de la Lotería */
+        /* Celdas de las Provincias / Loterías */
         .celda-provincia {
-            padding: 16px !important;
+            padding: 14px 16px !important;
             text-align: left;
-            border-bottom: 1px solid #334155 !important;
-        }
-
-        /* Texto puro sin links */
-        .celda-provincia-texto {
-            color: #e2e8f0 !important;
+            border-bottom: 1px solid #f1f5f9 !important;
             font-weight: 600;
-            font-size: 14px;
-            letter-spacing: 0.3px;
+            font-size: 13px;
+            color: #1e293b;
         }
 
-        /* Celdas de números ganadores */
+        /* Celdas donde van los números */
         .celda-numero {
             text-align: center;
-            padding: 12px 4px !important;
-            border-bottom: 1px solid #334155 !important;
+            padding: 10px 4px !important;
+            border-bottom: 1px solid #f1f5f9 !important;
         }
 
+        /* Estilo base para los números o guiones */
         .celda-numero font {
-            font-size: 14px !important;
-            font-weight: 700 !important;
-            color: #64748b !important; /* Color apagado para los '----' */
-            background: #111827;
-            padding: 6px 10px;
-            border-radius: 8px;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            color: #94a3b8 !important; /* Color gris suave para los '----' */
+            background: #f8fafc;
+            padding: 6px 8px;
+            border-radius: 6px;
             display: inline-block;
-            font-family: 'Courier New', Courier, monospace; /* Estilo tablero digital */
         }
 
-        /* Resaltado premium para números ya sorteados (Efecto LED Verde) */
+        /* Resaltado profesional para los números que ya salieron (Verde Éxito) */
         .numero-activo {
-            color: #34d399 !important; /* Verde Neón brillante */
-            background: rgba(16, 185, 129, 0.1) !important; /* Fondo sutil verde */
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            box-shadow: 0 0 10px rgba(52, 211, 153, 0.1);
+            color: #15803d !important; /* Verde oscuro legible sobre fondo blanco */
+            background: #dcfce7 !important; /* Fondo verde muy claro */
+            font-weight: 700 !important;
         }
     </style>
 </head>
@@ -140,27 +134,39 @@
         async function cargarQuiniela() {
             try {
                 const respuesta = await fetch(proxyUrl + encodeURIComponent(targetUrl));
-                if (!respuesta.ok) throw new Error("Error de conexión");
+                if (!respuesta.ok) throw new Error("Error al consultar el proxy");
                 
                 const textoHtml = await respuesta.text();
                 
+                // Parseamos el HTML obtenido
                 const parser = new DOMParser();
                 const docInterno = parser.parseFromString(textoHtml, 'text/html');
                 const tablaOriginal = docInterno.querySelector('table');
                 
                 if (tablaOriginal) {
-                    // 1. FILTRADO: Remover completamente la última fila (Pie de página con el link externo)
-                    const todasLasFilas = tablaOriginal.querySelectorAll('tr');
-                    if (todasLasFilas.length > 0) {
-                        todasLasFilas[todasLasFilas.length - 1].remove(); 
+                    
+                    // 1. FILTRADO EXTREMO DE ENLACES: Eliminar absolutamente todas las etiquetas <a> de la tabla
+                    // Esto remueve los enlaces del título, de las provincias y del pie de página automáticamente.
+                    const todosLosLinks = tablaOriginal.querySelectorAll('a');
+                    todosLosLinks.forEach(link => {
+                        // Reemplazamos el enlace por su propio contenido de texto plano
+                        link.replaceWith(link.textContent);
+                    });
+
+                    // 2. FILTRADO DE FILAS INUTILES: Remover la última fila (el pie de página vacío o con texto sobrante)
+                    const filasActuales = tablaOriginal.querySelectorAll('tr');
+                    if (filasActuales.length > 0) {
+                        filasActuales[filasActuales.length - 1].remove();
                     }
 
-                    // Aplicamos la clase de diseño premium
+                    // 3. ASIGNACIÓN DE ESTILOS MODERNOS
                     tablaOriginal.classList.add('tabla-moderna');
-                    const filas = tablaOriginal.querySelectorAll('tr');
                     
-                    filas.forEach((fila, index) => {
-                        // Procesamos las filas intermedias de datos
+                    // Volvemos a leer las filas restantes para procesar las celdas
+                    const filasParaProcesar = tablaOriginal.querySelectorAll('tr');
+                    
+                    filasParaProcesar.forEach((fila, index) => {
+                        // Saltamos el título (0) y los encabezados de turnos (1)
                         if (index > 1) {
                             fila.classList.add('fila-datos');
                             
@@ -168,48 +174,39 @@
                             celdas.forEach((celda, cIndex) => {
                                 if (cIndex === 0) {
                                     celda.classList.add('celda-provincia');
-                                    
-                                    // 2. FILTRADO: Convertir el enlace de la provincia en texto plano limpio
-                                    const linkOriginal = celda.querySelector('a');
-                                    if (linkOriginal) {
-                                        const textoProvincia = linkOriginal.textContent;
-                                        celda.innerHTML = `<span class="celda-provincia-texto">${textoProvincia}</span>`;
-                                    }
                                 } else {
                                     celda.classList.add('celda-numero');
                                     
+                                    // Evaluamos el tag font para ver si ya se cargó un número ganador
                                     const fontTag = celda.querySelector('font');
-                                    // Si tiene un número real cargado, le encendemos el 'LED' verde
-                                    if (fontTag && fontTag.textContent && !fontTag.textContent.includes('----')) {
+                                    if (fontTag && fontTag.textContent && !fontTag.textContent.includes('----') && fontTag.textContent.trim() !== '') {
                                         fontTag.classList.add('numero-activo');
                                     }
                                 }
                             });
-                        } else if (index === 0) {
-                            // 3. FILTRADO: Remover el link del título principal manteniendo solo el texto
-                            const linkTitulo = fila.querySelector('a');
-                            if (linkTitulo) {
-                                const textoTitulo = linkTitulo.textContent;
-                                fila.querySelector('td').innerHTML = textoTitulo;
-                            }
                         }
                     });
 
-                    // Renderizar en pantalla
+                    // Inyectamos la tabla limpia y rediseñada en el DOM
                     const contenedor = document.getElementById('contenedor-quiniela');
                     contenedor.innerHTML = '';
                     contenedor.appendChild(tablaOriginal);
+
                 } else {
-                    throw new Error("Estructura no válida.");
+                    throw new Error("No se detectó la estructura de la tabla.");
                 }
 
             } catch (error) {
-                console.error(error);
+                console.error("Detalle del error:", error);
                 document.getElementById('contenedor-quiniela').innerHTML = 
-                    "Error al actualizar la pizarra. Reintentando...";
+                    "Error al actualizar los resultados. Reintentando en unos segundos...";
+                
+                // Intento de autorecarga automatica si falla por saturación del proxy
+                setTimeout(cargarQuiniela, 5000);
             }
         }
 
+        // Ejecución inicial
         cargarQuiniela();
     </script>
 </body>
