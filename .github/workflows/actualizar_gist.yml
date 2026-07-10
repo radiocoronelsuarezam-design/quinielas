@@ -2,22 +2,29 @@ name: Actualizar Quiniela Gist
 
 on:
   schedule:
-    # Se ejecuta automáticamente cada hora
-    - cron: '0 * * * *'
-  workflow_dispatch: # Permite ejecutarlo manualmente desde la pestaña "Actions"
+    - cron: '*/30 * * * *' # Se ejecuta cada 30 minutos
+  workflow_dispatch: 
 
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - name: Actualizar Gist
+      - name: Extraer y Guardar
         env:
           TOKEN: ${{ secrets.GIST_TOKEN }}
           GIST_ID: "7c5ad924c12309fcdfcfc5c64269f8e9"
         run: |
-          # Aquí se enviaría el comando para actualizar tu Gist de forma segura
-          # Usaremos un CURL para hacer el PATCH sin exponer nada en tu HTML
+          # 1. Obtenemos el HTML (usando un servicio proxy compatible)
+          curl -s "https://corsproxy.io/?https%3A%2F%2Fwww.tujugada.com.ar%2Fdata%2Fqlas%2Fcabezas_web.htm" > pagina.html
+          
+          # 2. Aquí iría un script que convierta ese HTML a JSON (simplificado para el ejemplo)
+          # Por ahora, para probar, guardaremos un JSON estático. 
+          # Una vez que confirmes que esto funciona, podemos refinar la extracción.
+          
+          echo '{"estado": "actualizado", "fecha": "2026-07-10"}' > quiniela.json
+          
+          # 3. Enviamos el archivo al Gist
           curl -X PATCH -H "Authorization: token $TOKEN" \
           -H "Content-Type: application/json" \
-          -d "{\"files\":{\"quiniela.json\":{\"content\":\"$(date)\"}}}" \
+          -d "{\"files\":{\"quiniela.json\":{\"content\":\"$(cat quiniela.json)\"}}}" \
           https://api.github.com/gists/$GIST_ID
