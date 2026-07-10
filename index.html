@@ -35,7 +35,7 @@
             font-weight: 500;
         }
 
-        /* Cabecera Solicitada */
+        /* Cabecera Oficial */
         .cabecera-oficial {
             display: flex;
             justify-content: space-between;
@@ -64,7 +64,7 @@
             border: 1px solid #e2e8f0;
         }
 
-        /* Estructura GRID de las columnas */
+        /* Estructura GRID Exclusiva */
         .tabla-grid {
             padding: 16px;
             display: flex;
@@ -113,11 +113,11 @@
             text-align: center;
         }
 
-        /* Diseño de las celdas numéricas */
+        /* Formato de las Pastillas de Números */
         .badge-numero {
             font-size: 13px;
             font-weight: 600;
-            color: #cbd5e1; /* Gris claro para los '----' */
+            color: #cbd5e1; /* Gris para '----' */
             background: #f8fafc;
             padding: 6px 2px;
             border-radius: 6px;
@@ -126,7 +126,7 @@
             font-family: system-ui, -apple-system, sans-serif;
         }
 
-        /* Destacado Verde Éxito para cuando ya hay sorteo */
+        /* Resaltado Verde para Números Ya Sorteados */
         .numero-activo {
             color: #166534 !important;
             background: #dcfce7 !important;
@@ -156,7 +156,7 @@
         const proxyUrl = "https://corsproxy.io/?";
         const targetUrl = "https://www.tujugada.com.ar/data/qlas/cabezas_web.htm";
 
-        // Mapeo estricto para validar las filas correspondientes
+        // Orden de las provincias tal cual aparecen en el documento original
         const provinciasObjetivo = [
             "Ciudad", "Provincia", "Santa Fe", "Cordoba", "Mendoza", 
             "Entre Rios", "Corrientes", "Neuquen", "Rio Negro", "Chaco", "Jujuy", "Formosa"
@@ -171,7 +171,7 @@
                 const parser = new DOMParser();
                 const docInterno = parser.parseFromString(textoHtml, 'text/html');
 
-                // 1. RECOGIDA DE LA FECHA
+                // 1. EXTRACCIÓN SEGURA DE LA FECHA
                 let fechaEncontrada = "--/--/----";
                 const todosLosFuentes = docInterno.querySelectorAll('font');
                 for (let font of todosLosFuentes) {
@@ -185,48 +185,45 @@
                 }
                 document.getElementById('fecha-sorteo').textContent = fechaEncontrada;
 
-                // Diccionario donde guardaremos los 5 números ordenados de cada provincia
+                // Diccionario de almacenamiento
                 let datosLoterias = {};
                 provinciasObjetivo.forEach(p => datosLoterias[p] = []);
 
-                // 2. EXTRACTOR PRECISO POR FILAS INDEPENDIENTES
-                // Buscamos todas las filas de la tabla original
-                const todasLasFilas = docInterno.querySelectorAll('tr');
+                // 2. NUEVO EXTRACTOR SECUENCIAL GLOBAL (A PRUEBA DE FALLOS)
+                // Obtenemos absolutamente todas las celdas TD del documento remoto
+                const celdasGlobales = Array.from(docInterno.querySelectorAll('td'));
 
-                todasLasFilas.forEach(fila => {
-                    // Buscamos si dentro de esta fila en particular se menciona alguna provincia
-                    const textoFila = fila.textContent.trim();
-                    
-                    provinciasObjetivo.forEach(provincia => {
-                        // Si la fila contiene el nombre exacto (ej: "Santa Fe") y todavía no guardamos sus datos
-                        if (textoFila.startsWith(provincia) && datosLoterias[provincia].length === 0) {
+                for (let i = 0; i < celdasGlobales.length; i++) {
+                    const textoCelda = celdasGlobales[i].textContent.trim();
+
+                    // Si encontramos una celda que contiene exactamente una provincia de nuestra lista
+                    if (provinciasObjetivo.includes(textoCelda) && datosLoterias[textoCelda].length === 0) {
+                        let numerosDeEstaProvincia = [];
+                        
+                        // Avanzamos por las celdas que están inmediatamente después de la provincia
+                        let j = i + 1;
+                        while (j < celdasGlobales.length && numerosDeEstaProvincia.length < 5) {
+                            const posibleNumero = celdasGlobales[j].textContent.trim();
                             
-                            // Extraemos todos los bloques de fuentes (<font>) que estén dentro de esta FILA específica
-                            const fuentesDeLaFila = fila.querySelectorAll('font');
-                            let numerosDetectados = [];
-
-                            fuentesDeLaFila.forEach(font => {
-                                const valor = font.textContent.trim();
-                                // Si es un número de 4 dígitos o los guiones tradicionales, lo guardamos
-                                if (valor.length === 4 || valor === "----") {
-                                    numerosDetectados.push(valor);
-                                }
-                            });
-
-                            // Una quiniela válida tiene que registrar exactamente 5 turnos (columnas)
-                            if (numerosDetectados.length >= 5) {
-                                // Guardamos los primeros 5 en el orden exacto de aparición (Prev, Prim, Matu, Vesp, Noct)
-                                datosLoterias[provincia] = numerosDetectados.slice(0, 5);
+                            // Si el texto es un número de 4 dígitos o los guiones de espera '----'
+                            if (posibleNumero.length === 4 || posibleNumero === "----") {
+                                numerosDeEstaProvincia.push(posibleNumero);
                             }
+                            j++;
                         }
-                    });
-                });
 
-                // 3. CONSTRUCCIÓN DEL NUEVO PANEL HTML (100% LIMPIO)
+                        // Si recolectamos correctamente las 5 posiciones consecutivas, las guardamos
+                        if (numerosDeEstaProvincia.length === 5) {
+                            datosLoterias[textoCelda] = numerosDeEstaProvincia;
+                        }
+                    }
+                }
+
+                // 3. CONSTRUCCIÓN DEL PANEL GRÁFICO NUEVO
                 const gridContenedor = document.getElementById('grid-resultados');
                 gridContenedor.innerHTML = "";
 
-                // Inyectar Encabezados de Horarios
+                // Inyectar Horarios de la Pizarra
                 const filaHeader = document.createElement('div');
                 filaHeader.className = "fila-grid cabecera-grid";
                 filaHeader.innerHTML = `
@@ -239,7 +236,7 @@
                 `;
                 gridContenedor.appendChild(filaHeader);
 
-                // Inyectar las filas correspondientes de datos
+                // Inyectar Datos Mapeados por Columna
                 provinciasObjetivo.forEach(provincia => {
                     const arrayNumeros = datosLoterias[provincia];
                     
@@ -247,10 +244,8 @@
                         const filaItem = document.createElement('div');
                         filaItem.className = "fila-grid";
                         
-                        // Nombre de la lotería
                         filaItem.innerHTML += `<div class="celda-provincia">${provincia}</div>`;
                         
-                        // Recorremos los 5 números asignados uno por uno respetando su columna original
                         arrayNumeros.forEach(num => {
                             const esActivo = num && num !== "----" && num.trim() !== "" ? "numero-activo" : "";
                             filaItem.innerHTML += `
@@ -263,7 +258,7 @@
                     }
                 });
 
-                // Cambiar estados visuales
+                // Mostrar la interfaz finalizada
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('panel-quiniela').style.display = 'block';
 
@@ -275,7 +270,7 @@
             }
         }
 
-        // Lanzar proceso
+        // Ejecutar proceso
         cargarQuiniela();
     </script>
 </body>
