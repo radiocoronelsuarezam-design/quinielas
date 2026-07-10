@@ -5,12 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resultados de Quinielas Oficiales</title>
     <style>
-        /* ==========================================================================
-           Estilos Globales y Contenedor Principal
-           ========================================================================== */
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background-color: #f1f5f9; /* Fondo gris claro tipo aplicación */
+            background-color: #f1f5f9;
             color: #1e293b;
             padding: 40px 15px;
             display: flex;
@@ -20,25 +17,22 @@
 
         #panel-quiniela {
             width: 100%;
-            max-width: 550px;
+            max-width: 500px;
             background: #ffffff;
             border-radius: 20px;
             box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
             border: 1px solid #e2e8f0;
             overflow: hidden;
-            display: none; /* Se muestra solo cuando los datos se cargan correctamente */
+            display: none;
         }
 
-        /* Loader de carga */
         #loader {
             font-size: 14px;
             color: #64748b;
             font-weight: 500;
         }
 
-        /* ==========================================================================
-           Nueva Cabecera Profesional
-           ========================================================================== */
+        /* Cabecera Solicitada */
         .cabecera-oficial {
             display: flex;
             justify-content: space-between;
@@ -53,7 +47,7 @@
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: #0f172a; /* Negro/Azul profundo */
+            color: #0f172a;
             margin: 0;
         }
 
@@ -61,94 +55,88 @@
             background-color: #f1f5f9;
             color: #475569;
             padding: 6px 14px;
-            border-radius: 9999px; /* Forma de píldora/pastilla */
+            border-radius: 9999px;
             font-size: 12px;
             font-weight: 700;
-            letter-spacing: 0.3px;
             border: 1px solid #e2e8f0;
         }
 
-        /* ==========================================================================
-           Maquetación de la Tabla de Resultados (Limpieza Absoluta)
-           ========================================================================== */
-        .tabla-contenedor {
-            padding: 12px;
+        /* Nueva Estructura Grid Moderna (No usa <table>) */
+        .tabla-grid {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
         }
 
-        .tabla-moderna {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
+        .fila-grid {
+            display: grid;
+            grid-template-columns: 2fr repeat(5, 1fr); /* 1 columna ancha para provincia, 5 para números */
+            align-items: center;
+            padding: 10px 4px;
+            border-bottom: 1px solid #f1f5f9;
         }
 
-        /* Reset radical de propiedades de la tabla nativa */
-        .tabla-moderna td, 
-        .tabla-moderna tr,
-        .tabla-moderna font,
-        .tabla-moderna b {
-            background: none !important;
-            border: none !important;
-            font-family: inherit !important;
-        }
-
-        /* Cabeceras de los turnos (Previa, Primera, Matutina...) */
-        .tabla-moderna tr:first-child td {
-            background-color: #f8fafc !important;
-            padding: 12px 4px !important;
-            text-align: center;
+        /* Encabezados de Turnos (Previa, Primera...) */
+        .cabecera-grid {
+            background-color: #f8fafc;
             border-bottom: 2px solid #e2e8f0;
-        }
-
-        .tabla-moderna tr:first-child font {
-            color: #64748b !important; /* Gris intermedio legible */
-            font-weight: 700 !important;
-            font-size: 11px !important;
+            font-weight: 700;
+            font-size: 11px;
+            color: #64748b;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            text-align: center;
+            padding: 12px 4px;
+            border-radius: 6px;
         }
 
-        /* Filas de datos de las provincias */
-        .fila-datos:hover {
-            background-color: #f8fafc;
-        }
-
-        .celda-provincia {
-            padding: 16px 12px !important;
+        .cabecera-grid div:first-child {
             text-align: left;
-            border-bottom: 1px solid #f1f5f9 !important;
+            padding-left: 8px;
+        }
+
+        /* Celdas de Datos */
+        .celda-provincia {
             font-weight: 600;
             font-size: 13px;
-            color: #334155 !important; /* Forzar color oscuro para el texto de la provincia */
+            color: #334155;
+            padding-left: 8px;
         }
 
         .celda-numero {
             text-align: center;
-            padding: 10px 4px !important;
-            border-bottom: 1px solid #f1f5f9 !important;
         }
 
-        /* Estilo base de los números (cuando están vacíos con ----) */
-        .celda-numero font {
-            font-size: 13px !important;
-            font-weight: 600 !important;
-            color: #cbd5e1 !important; /* Gris muy tenue para guiones */
+        /* Formato de los números en pastillas */
+        .badge-numero {
+            font-size: 13px;
+            font-weight: 600;
+            color: #cbd5e1; /* Gris para guiones ---- */
             background: #f8fafc;
-            padding: 6px 10px;
+            padding: 6px 4px;
             border-radius: 8px;
-            display: inline-block;
+            display: block;
+            margin: 0 2px;
+            font-family: monospace;
         }
 
-        /* Resaltado Premium cuando hay un número ganador cargado */
+        /* Número Ganador Activo */
         .numero-activo {
-            color: #166534 !important; /* Verde oscuro nítido */
-            background: #dcfce7 !important; /* Fondo verde pastel sutil */
+            color: #166534 !important;
+            background: #dcfce7 !important;
             font-weight: 700 !important;
+        }
+
+        .fila-grid:not(.cabecera-grid):hover {
+            background-color: #f8fafc;
+            border-radius: 8px;
         }
     </style>
 </head>
 <body>
 
-    <div id="loader">Cargando resultados de la quiniela...</div>
+    <div id="loader">Sincronizando pizarra de resultados...</div>
 
     <div id="panel-quiniela">
         <header class="cabecera-oficial">
@@ -156,8 +144,7 @@
             <span class="pastilla-fecha" id="fecha-sorteo">--/--/----</span>
         </header>
         
-        <div class="tabla-contenedor" id="contenedor-tabla-pura">
-            </div>
+        <div class="tabla-grid" id="grid-resultados"></div>
     </div>
 
     <script>
@@ -167,88 +154,112 @@
         async function cargarQuiniela() {
             try {
                 const respuesta = await fetch(proxyUrl + encodeURIComponent(targetUrl));
-                if (!respuesta.ok) throw new Error("Error en la respuesta del proxy.");
+                if (!respuesta.ok) throw new Error("Error de red");
                 
                 const textoHtml = await respuesta.text();
-                
                 const parser = new DOMParser();
                 const docInterno = parser.parseFromString(textoHtml, 'text/html');
-                const tablaOriginal = docInterno.querySelector('table');
                 
-                if (tablaOriginal) {
-                    const filasOriginales = tablaOriginal.querySelectorAll('tr');
-                    
-                    if (filasOriginales.length > 0) {
-                        // 1. EXTRACCIÓN DINÁMICA DE LA FECHA
-                        // Buscamos el texto dentro de la primera fila original
-                        const textoCabeceraOriginal = filasOriginales[0].textContent || "";
-                        // Usamos Regex para capturar el formato de fecha (ej. 10/7/2026 o similar)
-                        const resultadoFecha = textoCabeceraOriginal.match(/\d{1,2}\/\d{1,2}\/\d{4}/);
-                        
-                        if (resultadoFecha) {
-                            document.getElementById('fecha-sorteo').textContent = resultadoFecha[0];
+                // Buscamos todas las filas TR que existan en el documento importado
+                const filasOriginales = docInterno.querySelectorAll('tr');
+                
+                if (filasOriginales.length > 2) {
+                    let datosExtraidos = [];
+                    let fechaEncontrada = "--/--/----";
+                    let encabezadosTurnos = [];
+
+                    filasOriginales.forEach((fila) => {
+                        const textoFila = fila.textContent || "";
+
+                        // 1. EXTRAER FECHA (Buscamos la fila que contiene la palabra FECHA)
+                        if (textoFila.includes("FECHA:")) {
+                            const match = textoFila.match(/\d{1,2}\/\d{1,2}\/\d{4}/);
+                            if (match) fechaEncontrada = match[0];
+                            return; // Saltamos esta fila vieja
                         }
 
-                        // 2. FILTRADO GLOBAL DE ENLACES: Convertir todos los tags <a> en texto plano
-                        const todosLosLinks = tablaOriginal.querySelectorAll('a');
-                        todosLosLinks.forEach(link => link.replaceWith(link.textContent));
-
-                        // 3. LIMPIEZA DE ESTRUCTURA VIEJA
-                        // Eliminamos la fila 0 (El título viejo "QUINIELA DE HOY") ya que tenemos la nueva cabecera
-                        filasOriginales[0].remove();
-                        // Eliminamos la última fila (El pie de página viejo con el link)
-                        filasOriginales[filasOriginales.length - 1].remove();
-
-                        // 4. ASIGNACIÓN DE CLASES Y PROCESAMIENTO DE TEXTOS OCULTOS
-                        tablaOriginal.classList.add('tabla-moderna');
-                        
-                        // Volvemos a leer las filas sobrevivientes (ahora el índice 0 son los turnos de horarios)
-                        const filasRestantes = tablaOriginal.querySelectorAll('tr');
-                        
-                        filasRestantes.forEach((fila, index) => {
-                            if (index > 0) { // Saltamos la cabecera de turnos
-                                fila.classList.add('fila-datos');
-                                
-                                const celdas = fila.querySelectorAll('td');
-                                celdas.forEach((celda, cIndex) => {
-                                    if (cIndex === 0) {
-                                        celda.classList.add('celda-provincia');
-                                    } else {
-                                        celda.classList.add('celda-numero');
-                                        
-                                        const fontTag = celda.querySelector('font');
-                                        if (fontTag) {
-                                            const textoNumero = fontTag.textContent.trim();
-                                            // Si tiene número cargado y no son guiones, activamos el formato destacado
-                                            if (textoNumero && !textoNumero.includes('----') && textoNumero !== '') {
-                                                fontTag.classList.add('numero-activo');
-                                            }
-                                        }
-                                    }
+                        // 2. EXTRAER ENCABEZADOS (Buscamos los turnos de horarios)
+                        if (textoFila.includes("Provincia") || textoFila.includes("Prev") || textoFila.includes("Prim")) {
+                            if (encabezadosTurnos.length === 0) {
+                                fila.querySelectorAll('td').forEach(td => {
+                                    encabezadosTurnos.push(td.textContent.trim());
                                 });
                             }
-                        });
+                            return; // Saltamos esta fila vieja
+                        }
 
-                        // 5. RENDERIZACIÓN FINAL
-                        document.getElementById('loader').style.display = 'none';
-                        const contenedorTabla = document.getElementById('contenedor-tabla-pura');
-                        contenedorTabla.innerHTML = '';
-                        contenedorTabla.appendChild(tablaOriginal);
-                        document.getElementById('panel-quiniela').style.display = 'block';
+                        // 3. EXTRAER FILAS DE NÚMEROS (Cualquier fila que tenga celdas con datos)
+                        const celdas = fila.querySelectorAll('td');
+                        if (celdas.length >= 2 && celdas[0].textContent.trim() !== "") {
+                            let filaData = { provincia: celdas[0].textContent.trim(), numeros: [] };
+                            
+                            for (let i = 1; i < celdas.length; i++) {
+                                if (celdas[i]) {
+                                    filaData.numeros.push(celdas[i].textContent.trim());
+                                }
+                            }
+                            
+                            // Evitamos meter filas de links inferiores basura
+                            if (filaData.provincia.length < 30 && !filaData.provincia.includes("www.")) {
+                                datosExtraidos.push(filaData);
+                            }
+                        }
+                    });
+
+                    // Inyectar Fecha extraída en la nueva pastilla
+                    document.getElementById('fecha-sorteo').textContent = fechaEncontrada;
+
+                    // CONSTRUCCIÓN DEL NUEVO HTML DESDE CERO (A prueba de fallos)
+                    const gridContenedor = document.getElementById('grid-resultados');
+                    gridContenedor.innerHTML = "";
+
+                    // Crear Fila de Encabezados
+                    if (encabezadosTurnos.length > 0) {
+                        const filaHeader = document.createElement('div');
+                        filaHeader.className = "fila-grid cabecera-grid";
+                        encabezadosTurnos.forEach(texto => {
+                            filaHeader.innerHTML += `<div>${texto}</div>`;
+                        });
+                        gridContenedor.appendChild(filaHeader);
                     }
+
+                    // Crear Filas de Datos de Loterías
+                    datosExtraidos.forEach(item => {
+                        const filaItem = document.createElement('div');
+                        filaItem.className = "fila-grid";
+                        
+                        // Celda Provincia limpia sin links
+                        filaItem.innerHTML += `<div class="celda-provincia">${item.provincia}</div>`;
+                        
+                        // Celdas Números limpias sin links
+                        item.numeros.forEach(num => {
+                            // Validar si es un número válido cargado o son guiones
+                            const esActivo = num && !num.includes('----') && num !== "" ? "numero-activo" : "";
+                            filaItem.innerHTML += `
+                                <div class="celda-numero">
+                                    <span class="badge-numero ${esActivo}">${num}</span>
+                                </div>`;
+                        });
+                        
+                        gridContenedor.appendChild(filaItem);
+                    });
+
+                    // Mostrar el panel moderno y ocultar el loader
+                    document.getElementById('loader').style.display = 'none';
+                    document.getElementById('panel-quiniela').style.display = 'block';
+
                 } else {
-                    throw new Error("No se encontró la estructura de tabla.");
+                    throw new Error("Estructura de origen vacía o incompleta.");
                 }
 
             } catch (error) {
-                console.error("Detalle:", error);
+                console.error(error);
                 document.getElementById('loader').innerHTML = 
-                    "Error al sincronizar con la pizarra oficial. Reintentando automáticamente...";
-                setTimeout(cargarQuiniela, 4000);
+                    "Error al conectar con la pizarra. Reintentando de fondo...";
+                setTimeout(cargarQuiniela, 5000);
             }
         }
 
-        // Ejecutar carga de datos
         cargarQuiniela();
     </script>
 </body>
