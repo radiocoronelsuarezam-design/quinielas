@@ -1,0 +1,23 @@
+name: Actualizar Quiniela Gist
+
+on:
+  schedule:
+    # Se ejecuta automáticamente cada hora
+    - cron: '0 * * * *'
+  workflow_dispatch: # Permite ejecutarlo manualmente desde la pestaña "Actions"
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Actualizar Gist
+        env:
+          TOKEN: ${{ secrets.GIST_TOKEN }}
+          GIST_ID: "7c5ad924c12309fcdfcfc5c64269f8e9"
+        run: |
+          # Aquí se enviaría el comando para actualizar tu Gist de forma segura
+          # Usaremos un CURL para hacer el PATCH sin exponer nada en tu HTML
+          curl -X PATCH -H "Authorization: token $TOKEN" \
+          -H "Content-Type: application/json" \
+          -d "{\"files\":{\"quiniela.json\":{\"content\":\"$(date)\"}}}" \
+          https://api.github.com/gists/$GIST_ID
