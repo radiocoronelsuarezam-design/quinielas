@@ -14,14 +14,16 @@ jobs:
           TOKEN: ${{ secrets.GIST_TOKEN }}
           GIST_ID: "7c5ad924c12309fcdfcfc5c64269f8e9"
         run: |
-          # Crear el contenido JSON
+          # 1. Crear el contenido JSON (puedes ajustar el contenido aquí)
           echo '{"estado": "actualizado", "fecha": "2026-07-10"}' > quiniela.json
           
-          # Construir payload seguro con jq
-          jq -n --arg file "quiniela.json" --arg content "$(cat quiniela.json)" \
-          '{files: {($file): {content: $content}}}' > payload.json
+          # 2. Usar jq para leer el archivo como objeto JSON e insertarlo en la estructura de la API
+          # Esto evita problemas de caracteres especiales o comillas
+          jq -n --arg file "quiniela.json" \
+                --argjson content "$(cat quiniela.json)" \
+                '{files: {($file): {content: ($content | tojson)}}}' > payload.json
           
-          # Enviar a la API de GitHub
+          # 3. Enviar a la API de GitHub
           curl -s -X PATCH -H "Authorization: token $TOKEN" \
           -H "Content-Type: application/json" \
           -d @payload.json \
