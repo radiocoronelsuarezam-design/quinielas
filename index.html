@@ -1,11 +1,192 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resultados quinielas</title>
+    <title>Quiniela Moderna - Live Server Fix</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: #f4f6f9;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        #contenedor-quiniela {
+            width: 100%;
+            max-width: 500px;
+        }
+
+        /* Limpieza profunda de los estilos viejos inyectados */
+        #contenedor-quiniela table, 
+        #contenedor-quiniela td, 
+        #contenedor-quiniela tr {
+            background: none !important;
+            border: none !important;
+        }
+
+        /* Estructura de la tabla principal */
+        .tabla-moderna {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            border: 1px solid #eaeaea;
+        }
+
+        /* Fila del Título Principal */
+        .tabla-moderna tr:first-child td {
+            background: linear-gradient(135deg, #e63946, #d90429) !important;
+            padding: 18px !important;
+            text-align: center;
+        }
+
+        .tabla-moderna tr:first-child a {
+            color: #ffffff !important;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 0.5px;
+        }
+
+        /* Encabezados de columnas (Horarios) */
+        .tabla-moderna tr:nth-child(2) td {
+            background-color: #f8f9fa !important;
+            padding: 12px 6px !important;
+            text-align: center;
+            border-bottom: 2px solid #ededd8;
+        }
+
+        .tabla-moderna tr:nth-child(2) font {
+            color: #6c757d !important;
+            font-weight: 600 !important;
+            font-size: 11px !important;
+        }
+
+        /* Filas de datos */
+        .fila-datos:hover {
+            background-color: #fdfdfd;
+        }
+
+        .celda-provincia {
+            padding: 14px 16px !important;
+            text-align: left;
+        }
+
+        .celda-provincia a {
+            color: #2b2d42 !important;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .celda-numero {
+            text-align: center;
+            padding: 10px 4px !important;
+        }
+
+        .celda-numero font {
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            color: #2b2d42 !important;
+            background: #f1f3f5;
+            padding: 6px 10px;
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        /* Destacar las celdas que ya tienen un número ganador */
+        .numero-activo {
+            background-color: #e8f5e9 !important;
+            color: #1b5e20 !important;
+        }
+
+        /* Pie de página */
+        .tabla-moderna tr:last-child td {
+            background-color: #f8f9fa !important;
+            padding: 12px !important;
+            text-align: center;
+            border-top: 1px solid #eaeaea;
+        }
+
+        .tabla-moderna tr:last-child a {
+            color: #a0aec0 !important;
+            font-size: 11px;
+            text-decoration: none;
+        }
+    </style>
 </head>
 <body>
-    <iframe scrolling="no" src="https://www.tujugada.com.ar/data/qlas/cabezas_web.htm" style="height:500px; width:330px; position: absolute; top: -50px; border: none; overflow: hidden;" allowfullscreen=""></iframe>
+
+    <div id="contenedor-quiniela">Cargando resultados en tiempo real...</div>
+
+    <script>
+        // Usamos un proxy público para saltar la restricción CORS de Live Server
+        const proxyUrl = "https://api.allorigins.win/get?url=";
+        const targetUrl = encodeURIComponent("https://www.tujugada.com.ar/data/qlas/cabezas_web.htm");
+
+        async function cargarQuiniela() {
+            try {
+                const respuesta = await fetch(proxyUrl + targetUrl);
+                if (!respuesta.ok) throw new Error("No se pudo obtener respuesta del proxy");
+                
+                const datos = await respuesta.json();
+                
+                // Parseamos el HTML recibido como texto plano
+                const parser = new DOMParser();
+                const docInterno = parser.parseFromString(datos.contents, 'text/html');
+                
+                // Buscamos la tabla dentro del documento extraído
+                const tablaOriginal = docInterno.querySelector('table');
+                
+                if (tablaOriginal) {
+                    tablaOriginal.classList.add('tabla-moderna');
+                    
+                    const filas = tablaOriginal.querySelectorAll('tr');
+                    
+                    filas.forEach((fila, index) => {
+                        // Modificamos solo las filas con números (evitando cabecera y pie)
+                        if (index > 1 && index < filas.length - 1) {
+                            fila.classList.add('fila-datos');
+                            
+                            const celdas = fila.querySelectorAll('td');
+                            celdas.forEach((celda, cIndex) => {
+                                if (cIndex === 0) {
+                                    celda.classList.add('celda-provincia');
+                                } else {
+                                    celda.classList.add('celda-numero');
+                                    
+                                    // Si hay un número ganador cargado, le aplicamos la clase activa
+                                    const fontTag = celda.querySelector('font');
+                                    if (fontTag && fontTag.textContent && !fontTag.textContent.includes('----')) {
+                                        fontTag.classList.add('numero-activo');
+                                    }
+                                }
+                            });
+                        }
+                    });
+
+                    // Insertamos la tabla ya procesada en nuestra web
+                    const contenedor = document.getElementById('contenedor-quiniela');
+                    contenedor.innerHTML = '';
+                    contenedor.appendChild(tablaOriginal);
+                } else {
+                    throw new Error("No se encontró la estructura de la tabla.");
+                }
+
+            } catch (error) {
+                console.error("Detalle del error:", error);
+                document.getElementById('contenedor-quiniela').innerHTML = 
+                    "Error al conectar con el servidor de resultados. Intenta recargar la página.";
+            }
+        }
+
+        // Ejecutar al cargar la página
+        cargarQuiniela();
+    </script>
 </body>
 </html>
