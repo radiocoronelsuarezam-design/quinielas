@@ -13,7 +13,7 @@
 
     #panel-quiniela {
         width: 100%;
-        max-width: 100%; /* Ocupa todo el ancho disponible */
+        max-width: 100%;
         background: #ffffff;
         border-radius: 20px;
         box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
@@ -58,7 +58,6 @@
         box-sizing: border-box;
     }
 
-    /* Diseño Grid para pantallas grandes (Escritorio / Tablet) */
     .fila-grid {
         display: grid;
         grid-template-columns: 2fr repeat(5, 1fr); 
@@ -121,9 +120,6 @@
         border-radius: 8px;
     }
 
-    /* ==========================================================================
-       ADAPTACIÓN RESPONSIVA PARA MÓVILES (Menos de 576px)
-       ========================================================================== */
     @media (max-width: 576px) {
         .cabecera-oficial {
             flex-direction: column;
@@ -132,12 +128,10 @@
             padding: 15px;
         }
 
-        /* Ocultamos la cabecera horizontal clásica */
         .cabecera-grid {
             display: none;
         }
 
-        /* Convertimos cada fila en una tarjeta independiente */
         .fila-grid {
             grid-template-columns: 1fr;
             gap: 8px;
@@ -158,7 +152,6 @@
             color: #0f172a;
         }
 
-        /* Forzamos a que se muestre el nombre del turno al lado del número */
         .celda-numero {
             display: flex;
             justify-content: space-between;
@@ -166,7 +159,6 @@
             padding: 2px 5px;
         }
 
-        /* Creamos la etiqueta del turno dinámicamente en móviles */
         .celda-numero::before {
             font-size: 11px;
             font-weight: 700;
@@ -187,7 +179,6 @@
         }
     }
 
-    /* CONTINGENCIA IFRAME */
     #contingencia-iframe {
         display: none;
         width: 100%;
@@ -205,33 +196,21 @@
         height: 290px;
         overflow: hidden;
     }
-    .alerta-contingencia {
-        font-size: 11px;
-        color: #94a3b8;
-        margin-bottom: 8px;
-        font-weight: 500;
-        text-transform: uppercase;
-    }
 </style>
 
-<div class="pizarra-contenedor">
-
+<div class="pizarra-contenedor" id="pizarra-main-html">
     <div id="panel-quiniela">
         <header class="cabecera-oficial">
             <h1 class="cabecera-titulo">Resultados de quinielas</h1>
             <span class="pastilla-fecha" id="fecha-sorteo">--/--/----</span>
         </header>
-        
         <div class="tabla-grid" id="grid-resultados">
             <div style="padding: 20px; color: #64748b; font-size: 14px; text-align: center;">Cargando datos oficiales...</div>
         </div>
     </div>
-
     <div id="contingencia-iframe">
-        <div class="alerta-contingencia">⚠️ Modo de contingencia (Banner Original)</div>
-        <iframe id="iframe-banner" src="" scrolling="no"></iframe>
+        <iframe id="iframe-banner" src="https://www.tujugada.com.ar/data/qlas/cabezas_web.htm" style="height:500px; width:330px; margin: 0 auto;"></iframe>
     </div>
-
 </div>
 
 <script>
@@ -244,21 +223,16 @@
             "Entre Rios", "Corrientes", "Neuquen", "Rio Negro", "Chaco", "Jujuy", "Formosa"
         ];
 
-        async function cargarQuiniela() {
+        // 1. ADICIÓN: FUNCIÓN GLOBAL EXOCÉLULA PARA EXTRAER Y DEVOLVER SÓLO EL OBJETO DE DATOS
+        window.obtenerDatosEstructurados = async function() {
             try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 6000);
-
-                const respuesta = await fetch(proxyUrl + encodeURIComponent(targetUrl), { signal: controller.signal });
-                clearTimeout(timeoutId);
-
-                if (!respuesta.ok) throw new Error("Proxy offline");
+                const respuesta = await fetch(proxyUrl + encodeURIComponent(targetUrl));
+                if (!respuesta.ok) return { error: "Proxy offline" };
                 
                 const textoHtml = await respuesta.text();
                 const parser = new DOMParser();
                 const docInterno = parser.parseFromString(textoHtml, 'text/html');
 
-                // EXTRAER FECHA
                 let fechaEncontrada = "--/--/----";
                 const todosLosFuentes = docInterno.querySelectorAll('font');
                 for (let font of todosLosFuentes) {
@@ -267,28 +241,22 @@
                         if (match) { fechaEncontrada = match[0]; break; }
                     }
                 }
-                document.getElementById('fecha-sorteo').textContent = fechaEncontrada;
 
-                // PROCESAMIENTO DE MATRIZ
                 let datosLoterias = {};
                 const enlacesLoterias = docInterno.querySelectorAll('a.modtit');
                 
                 enlacesLoterias.forEach(enlace => {
                     const nombreProvincia = enlace.textContent.trim();
-                    
                     if (provinciasObjetivo.includes(nombreProvincia)) {
                         const subTabla = enlace.closest('table');
                         if (!subTabla) return;
-                        
                         const tdContenedor = subTabla.parentElement;
                         if (!tdContenedor) return;
-                        
                         const filaPrincipalTr = tdContenedor.closest('tr');
                         
                         if (filaPrincipalTr) {
                             const columnasPrincipales = Array.from(filaPrincipalTr.children);
                             let numerosDeEstaProvincia = [];
-                            
                             for (let i = 1; i <= 5; i++) {
                                 if (columnasPrincipales[i]) {
                                     numerosDeEstaProvincia.push(columnasPrincipales[i].textContent.trim());
@@ -301,7 +269,36 @@
                     }
                 });
 
-                // RENDERIZAR TABLA
+                return {
+                    fecha: fechaEncontrada,
+                    loterias: datosLoterias
+                };
+            } catch (e) {
+                return { error: e.toString() };
+            }
+        };
+
+        // LÓGICA PRINCIPAL DE CARGA Y CONTROL DEL PARÁMETRO GET
+        async function cargarQuiniela() {
+            // DETECTAR PARÁMETRO GET (?formato=json)
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('formato') === 'json') {
+                // Ocultamos la interfaz visual para que quede pantalla limpia
+                document.getElementById('pizarra-main-html').style.display = 'none';
+                
+                // Obtenemos los datos limpios de la función y los imprimimos en texto puro
+                const dataOutput = await window.obtenerDatosEstructurados();
+                document.body.innerHTML = `<pre style="word-wrap: break-word; white-space: pre-wrap;">${JSON.stringify(dataOutput, null, 2)}</pre>`;
+                return; 
+            }
+
+            // SI NO HAY PARÁMETRO, SIGUE CON TU RENDERIZADO VISUAL HABITUAL
+            try {
+                const datosCompletos = await window.obtenerDatosEstructurados();
+                if (datosCompletos.error) throw new Error(datosCompletos.error);
+
+                document.getElementById('fecha-sorteo').textContent = datosCompletos.fecha;
+
                 const gridContenedor = document.getElementById('grid-resultados');
                 gridContenedor.innerHTML = "";
 
@@ -318,7 +315,7 @@
                 gridContenedor.appendChild(filaHeader);
 
                 provinciasObjetivo.forEach(provincia => {
-                    const arrayNumeros = datosLoterias[provincia] || ["----", "----", "----", "----", "----"];
+                    const arrayNumeros = datosCompletos.loterias[provincia] || ["----", "----", "----", "----", "----"];
                     
                     const filaItem = document.createElement('div');
                     filaItem.className = "fila-grid";
@@ -341,16 +338,10 @@
             } catch (error) {
                 console.warn("Falla en proxy. Activando Iframe:", error);
                 document.getElementById('panel-quiniela').style.display = 'none';
-                
-                const iframe = document.getElementById('iframe-banner');
-                if(!iframe.src) {
-                    iframe.src = targetUrl;
-                }
                 document.getElementById('contingencia-iframe').style.display = 'block';
             }
         }
 
-        // Encapsulado e inicio automático seguro
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', cargarQuiniela);
         } else {
@@ -360,5 +351,4 @@
         setInterval(cargarQuiniela, 30000);
     })();
 </script>
-
 <p style="color: transparent; user-select: none;">Resultados de quinielas y sorteos. Todos los resultados corresponden a los ultimos sorteos realizaados</p>
