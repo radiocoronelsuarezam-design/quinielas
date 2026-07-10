@@ -64,7 +64,7 @@
             border: 1px solid #e2e8f0;
         }
 
-        /* Estructura GRID Exclusiva */
+        /* Estructura GRID */
         .tabla-grid {
             padding: 16px;
             display: flex;
@@ -113,7 +113,7 @@
             text-align: center;
         }
 
-        /* Formato de las Pastillas de Números */
+        /* Pastillas de Números */
         .badge-numero {
             font-size: 13px;
             font-weight: 600;
@@ -126,7 +126,7 @@
             font-family: system-ui, -apple-system, sans-serif;
         }
 
-        /* Resaltado Verde para Números Ya Sorteados */
+        /* Resaltado Verde para Sorteados */
         .numero-activo {
             color: #166534 !important;
             background: #dcfce7 !important;
@@ -156,7 +156,7 @@
         const proxyUrl = "https://corsproxy.io/?";
         const targetUrl = "https://www.tujugada.com.ar/data/qlas/cabezas_web.htm";
 
-        // Orden de las provincias tal cual aparecen en el documento original
+        // Provincias objetivo en el orden estricto de visualización
         const provinciasObjetivo = [
             "Ciudad", "Provincia", "Santa Fe", "Cordoba", "Mendoza", 
             "Entre Rios", "Corrientes", "Neuquen", "Rio Negro", "Chaco", "Jujuy", "Formosa"
@@ -171,7 +171,7 @@
                 const parser = new DOMParser();
                 const docInterno = parser.parseFromString(textoHtml, 'text/html');
 
-                // 1. EXTRACCIÓN SEGURA DE LA FECHA
+                // 1. EXTRACCIÓN DE LA FECHA
                 let fechaEncontrada = "--/--/----";
                 const todosLosFuentes = docInterno.querySelectorAll('font');
                 for (let font of todosLosFuentes) {
@@ -185,45 +185,53 @@
                 }
                 document.getElementById('fecha-sorteo').textContent = fechaEncontrada;
 
-                // Diccionario de almacenamiento limpio
+                // Diccionario de datos limpio
                 let datosLoterias = {};
                 provinciasObjetivo.forEach(p => datosLoterias[p] = []);
 
-                // 2. NUEVO EXTRACTOR DE VALORES POR BLOQUES AISLADOS
-                const celdasGlobales = Array.from(docInterno.querySelectorAll('td'));
+                // 2. FILTRADO ESTRICTO POR FILAS CONTENEDORAS (TR)
+                const todasLasFilas = docInterno.querySelectorAll('tr');
 
-                for (let i = 0; i < celdasGlobales.length; i++) {
-                    const textoCelda = celdasGlobales[i].textContent.trim();
+                todasLasFilas.forEach(tr => {
+                    // Buscamos si dentro de este TR hay un enlace con el nombre de la provincia
+                    const enlaces = tr.querySelectorAll('a');
+                    let provinciaDetectada = null;
 
-                    // Cuando machea exactamente con una provincia...
-                    if (provinciasObjetivo.includes(textoCelda) && datosLoterias[textoCelda].length === 0) {
-                        let numerosDeEstaProvincia = [];
-                        
-                        // Avanzamos buscando secuencialmente solo valores que cumplan el formato
-                        let j = i + 1;
-                        while (j < celdasGlobales.length && numerosDeEstaProvincia.length < 5) {
-                            const posibleNumero = celdasGlobales[j].textContent.trim();
-                            
-                            // Si cruzamos otra provincia antes de completar las 5, frenamos para no duplicar datos
-                            if (provinciasObjetivo.includes(posibleNumero) && posibleNumero !== textoCelda) {
-                                break;
+                    enlaces.forEach(a => {
+                        const textoEnlace = a.textContent.trim();
+                        if (provinciasObjetivo.includes(textoEnlace)) {
+                            provinciaDetectada = textoEnlace;
+                        }
+                    });
+
+                    // Si encontramos la provincia en esta fila, extraemos EXCLUSIVAMENTE sus 5 celdas numéricas
+                    if (provinciaDetectada && datosLoterias[provinciaDetectada].length === 0) {
+                        let numerosDeEstaFila = [];
+                        const todasLasCeldas = tr.querySelectorAll('td');
+
+                        todasLasCeldas.forEach(td => {
+                            const textoCelda = td.textContent.trim();
+                            // Capturamos solo lo que sea un número de 4 dígitos o los guiones '----'
+                            if (textoCelda.length === 4 || textoCelda === "----") {
+                                numerosDeEstaFila.push(textoCelda);
                             }
+                        });
 
-                            // Registramos únicamente números de 4 dígitos o los guiones '----'
-                            if (posibleNumero.length === 4 || posibleNumero === "----") {
-                                numerosDeEstaProvincia.push(posibleNumero);
+                        // El documento original a veces duplica elementos TD internamente por las subtablas.
+                        // Limpiamos duplicados consecutivos (como "----" seguidos en sub-celdas) manteniendo el orden.
+                        let numerosLimpios = [];
+                        for(let k = 0; k < numerosDeEstaFila.length; k++) {
+                            if (numerosDeEstaFila[k] !== numerosDeEstaFila[k-1]) {
+                                numerosLimpios.push(numerosDeEstaFila[k]);
                             }
-                            j++;
                         }
 
-                        // Si por el desorden del HTML faltan columnas, rellenamos con '----' por seguridad
-                        while (numerosDeEstaProvincia.length < 5) {
-                            numerosDeEstaProvincia.push("----");
+                        // Guardamos exactamente las primeras 5 posiciones que corresponden a los 5 turnos
+                        if (numerosLimpios.length >= 5) {
+                            datosLoterias[provinciaDetectada] = numerosLimpios.slice(0, 5);
                         }
-
-                        datosLoterias[textoCelda] = numerosDeEstaProvincia;
                     }
-                }
+                });
 
                 // 3. CONSTRUCCIÓN DEL PANEL GRÁFICO NUEVO
                 const gridContenedor = document.getElementById('grid-resultados');
@@ -242,7 +250,7 @@
                 `;
                 gridContenedor.appendChild(filaHeader);
 
-                // Inyectar Datos Mapeados por Columna de manera exacta
+                // Inyectar Datos Mapeados sin errores de cruce
                 provinciasObjetivo.forEach(provincia => {
                     const arrayNumeros = datosLoterias[provincia];
                     
