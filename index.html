@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quiniela Moderna - Live Server Fix</title>
+    <title>Resultados de Quiniela</title>
     <style>
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -18,7 +18,7 @@
             max-width: 500px;
         }
 
-        /* Limpieza profunda de los estilos viejos inyectados */
+        /* Forzar la limpieza de los estilos antiguos heredados */
         #contenedor-quiniela table, 
         #contenedor-quiniela td, 
         #contenedor-quiniela tr {
@@ -26,7 +26,7 @@
             border: none !important;
         }
 
-        /* Estructura de la tabla principal */
+        /* Diseño de tarjeta moderno */
         .tabla-moderna {
             width: 100%;
             border-collapse: separate;
@@ -38,7 +38,7 @@
             border: 1px solid #eaeaea;
         }
 
-        /* Fila del Título Principal */
+        /* Cabecera Principal */
         .tabla-moderna tr:first-child td {
             background: linear-gradient(135deg, #e63946, #d90429) !important;
             padding: 18px !important;
@@ -53,12 +53,12 @@
             letter-spacing: 0.5px;
         }
 
-        /* Encabezados de columnas (Horarios) */
+        /* Cabeceras de columnas (Horarios) */
         .tabla-moderna tr:nth-child(2) td {
             background-color: #f8f9fa !important;
             padding: 12px 6px !important;
             text-align: center;
-            border-bottom: 2px solid #ededd8;
+            border-bottom: 2px solid #eaeaea;
         }
 
         .tabla-moderna tr:nth-child(2) font {
@@ -99,7 +99,7 @@
             display: inline-block;
         }
 
-        /* Destacar las celdas que ya tienen un número ganador */
+        /* Estilo destacado para números ya sorteados */
         .numero-activo {
             background-color: #e8f5e9 !important;
             color: #1b5e20 !important;
@@ -125,31 +125,30 @@
     <div id="contenedor-quiniela">Cargando resultados en tiempo real...</div>
 
     <script>
-        // Usamos un proxy público para saltar la restricción CORS de Live Server
-        const proxyUrl = "https://api.allorigins.win/get?url=";
-        const targetUrl = encodeURIComponent("https://www.tujugada.com.ar/data/qlas/cabezas_web.htm");
+        // Cambiamos al servicio de corsproxy.io (es directo, solo se añade antes de la URL)
+        const proxyUrl = "https://corsproxy.io/?";
+        const targetUrl = "https://www.tujugada.com.ar/data/qlas/cabezas_web.htm";
 
         async function cargarQuiniela() {
             try {
-                const respuesta = await fetch(proxyUrl + targetUrl);
-                if (!respuesta.ok) throw new Error("No se pudo obtener respuesta del proxy");
+                // Hacemos la petición a través del nuevo proxy
+                const respuesta = await fetch(proxyUrl + encodeURIComponent(targetUrl));
+                if (!respuesta.ok) throw new Error("El proxy no devolvió una respuesta correcta.");
                 
-                const datos = await respuesta.json();
+                const textoHtml = await respuesta.text();
                 
-                // Parseamos el HTML recibido como texto plano
+                // Parseamos el HTML plano
                 const parser = new DOMParser();
-                const docInterno = parser.parseFromString(datos.contents, 'text/html');
-                
-                // Buscamos la tabla dentro del documento extraído
+                const docInterno = parser.parseFromString(textoHtml, 'text/html');
                 const tablaOriginal = docInterno.querySelector('table');
                 
                 if (tablaOriginal) {
+                    // Aplicamos nuestra clase de estilos modernos
                     tablaOriginal.classList.add('tabla-moderna');
-                    
                     const filas = tablaOriginal.querySelectorAll('tr');
                     
                     filas.forEach((fila, index) => {
-                        // Modificamos solo las filas con números (evitando cabecera y pie)
+                        // Procesamos solo las filas con los números de las loterías
                         if (index > 1 && index < filas.length - 1) {
                             fila.classList.add('fila-datos');
                             
@@ -160,8 +159,8 @@
                                 } else {
                                     celda.classList.add('celda-numero');
                                     
-                                    // Si hay un número ganador cargado, le aplicamos la clase activa
                                     const fontTag = celda.querySelector('font');
+                                    // Si contiene un número real y no guiones, lo resaltamos
                                     if (fontTag && fontTag.textContent && !fontTag.textContent.includes('----')) {
                                         fontTag.classList.add('numero-activo');
                                     }
@@ -170,22 +169,22 @@
                         }
                     });
 
-                    // Insertamos la tabla ya procesada en nuestra web
+                    // Inyectamos la tabla limpia en el contenedor
                     const contenedor = document.getElementById('contenedor-quiniela');
                     contenedor.innerHTML = '';
                     contenedor.appendChild(tablaOriginal);
                 } else {
-                    throw new Error("No se encontró la estructura de la tabla.");
+                    throw new Error("No se pudo leer la estructura de la tabla original.");
                 }
 
             } catch (error) {
-                console.error("Detalle del error:", error);
+                console.error("Error detallado:", error);
                 document.getElementById('contenedor-quiniela').innerHTML = 
-                    "Error al conectar con el servidor de resultados. Intenta recargar la página.";
+                    "Error al conectar con el servidor de resultados. Intentando recargar...";
             }
         }
 
-        // Ejecutar al cargar la página
+        // Ejecutar carga inicial
         cargarQuiniela();
     </script>
 </body>
