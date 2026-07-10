@@ -198,16 +198,18 @@
     }
 </style>
 
-<div class="pizarra-contenedor" id="pizarra-main-html">
+<div class="pizarra-contenedor">
     <div id="panel-quiniela">
         <header class="cabecera-oficial">
             <h1 class="cabecera-titulo">Resultados de quinielas</h1>
             <span class="pastilla-fecha" id="fecha-sorteo">--/--/----</span>
         </header>
+        
         <div class="tabla-grid" id="grid-resultados">
             <div style="padding: 20px; color: #64748b; font-size: 14px; text-align: center;">Cargando datos oficiales...</div>
         </div>
     </div>
+
     <div id="contingencia-iframe">
         <iframe id="iframe-banner" src="https://www.tujugada.com.ar/data/qlas/cabezas_web.htm" style="height:500px; width:330px; margin: 0 auto;"></iframe>
     </div>
@@ -217,17 +219,19 @@
     (function() {
         const proxyUrl = "https://corsproxy.io/?";
         const targetUrl = "https://www.tujugada.com.ar/data/qlas/cabezas_web.htm";
-
         const provinciasObjetivo = [
             "Ciudad", "Provincia", "Santa Fe", "Cordoba", "Mendoza", 
             "Entre Rios", "Corrientes", "Neuquen", "Rio Negro", "Chaco", "Jujuy", "Formosa"
         ];
 
-        // 1. ADICIÓN: FUNCIÓN GLOBAL EXOCÉLULA PARA EXTRAER Y DEVOLVER SÓLO EL OBJETO DE DATOS
-        window.obtenerDatosEstructurados = async function() {
+        async function cargarQuiniela() {
             try {
-                const respuesta = await fetch(proxyUrl + encodeURIComponent(targetUrl));
-                if (!respuesta.ok) return { error: "Proxy offline" };
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 6000);
+                const respuesta = await fetch(proxyUrl + encodeURIComponent(targetUrl), { signal: controller.signal });
+                clearTimeout(timeoutId);
+
+                if (!respuesta.ok) throw new Error("Proxy offline");
                 
                 const textoHtml = await respuesta.text();
                 const parser = new DOMParser();
@@ -241,10 +245,10 @@
                         if (match) { fechaEncontrada = match[0]; break; }
                     }
                 }
+                document.getElementById('fecha-sorteo').textContent = fechaEncontrada;
 
                 let datosLoterias = {};
                 const enlacesLoterias = docInterno.querySelectorAll('a.modtit');
-                
                 enlacesLoterias.forEach(enlace => {
                     const nombreProvincia = enlace.textContent.trim();
                     if (provinciasObjetivo.includes(nombreProvincia)) {
@@ -253,82 +257,33 @@
                         const tdContenedor = subTabla.parentElement;
                         if (!tdContenedor) return;
                         const filaPrincipalTr = tdContenedor.closest('tr');
-                        
                         if (filaPrincipalTr) {
                             const columnasPrincipales = Array.from(filaPrincipalTr.children);
                             let numerosDeEstaProvincia = [];
                             for (let i = 1; i <= 5; i++) {
-                                if (columnasPrincipales[i]) {
-                                    numerosDeEstaProvincia.push(columnasPrincipales[i].textContent.trim());
-                                } else {
-                                    numerosDeEstaProvincia.push("----");
-                                }
+                                numerosDeEstaProvincia.push(columnasPrincipales[i] ? columnasPrincipales[i].textContent.trim() : "----");
                             }
                             datosLoterias[nombreProvincia] = numerosDeEstaProvincia;
                         }
                     }
                 });
 
-                return {
-                    fecha: fechaEncontrada,
-                    loterias: datosLoterias
-                };
-            } catch (e) {
-                return { error: e.toString() };
-            }
-        };
-
-        // LÓGICA PRINCIPAL DE CARGA Y CONTROL DEL PARÁMETRO GET
-        async function cargarQuiniela() {
-            // DETECTAR PARÁMETRO GET (?formato=json)
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('formato') === 'json') {
-                // Ocultamos la interfaz visual para que quede pantalla limpia
-                document.getElementById('pizarra-main-html').style.display = 'none';
-                
-                // Obtenemos los datos limpios de la función y los imprimimos en texto puro
-                const dataOutput = await window.obtenerDatosEstructurados();
-                document.body.innerHTML = `<pre style="word-wrap: break-word; white-space: pre-wrap;">${JSON.stringify(dataOutput, null, 2)}</pre>`;
-                return; 
-            }
-
-            // SI NO HAY PARÁMETRO, SIGUE CON TU RENDERIZADO VISUAL HABITUAL
-            try {
-                const datosCompletos = await window.obtenerDatosEstructurados();
-                if (datosCompletos.error) throw new Error(datosCompletos.error);
-
-                document.getElementById('fecha-sorteo').textContent = datosCompletos.fecha;
-
                 const gridContenedor = document.getElementById('grid-resultados');
                 gridContenedor.innerHTML = "";
-
                 const filaHeader = document.createElement('div');
                 filaHeader.className = "fila-grid cabecera-grid";
-                filaHeader.innerHTML = `
-                    <div>Lotería</div>
-                    <div>Prev<br>10:15</div>
-                    <div>Prim<br>12:00</div>
-                    <div>Matu<br>15:00</div>
-                    <div>Vesp<br>18:00</div>
-                    <div>Noct<br>21:00</div>
-                `;
+                filaHeader.innerHTML = `<div>Lotería</div><div>Prev</div><div>Prim</div><div>Matu</div><div>Vesp</div><div>Noct</div>`;
                 gridContenedor.appendChild(filaHeader);
 
                 provinciasObjetivo.forEach(provincia => {
-                    const arrayNumeros = datosCompletos.loterias[provincia] || ["----", "----", "----", "----", "----"];
-                    
+                    const arrayNumeros = datosLoterias[provincia] || ["----", "----", "----", "----", "----"];
                     const filaItem = document.createElement('div');
                     filaItem.className = "fila-grid";
                     filaItem.innerHTML += `<div class="celda-provincia">${provincia}</div>`;
-                    
                     arrayNumeros.forEach(num => {
-                        const esActivo = num && num !== "----" && num.trim() !== "" ? "numero-activo" : "";
-                        filaItem.innerHTML += `
-                            <div class="celda-numero">
-                                <span class="badge-numero ${esActivo}">${num}</span>
-                            </div>`;
+                        const esActivo = (num && num !== "----" && num.trim() !== "") ? "numero-activo" : "";
+                        filaItem.innerHTML += `<div class="celda-numero"><span class="badge-numero ${esActivo}">${num}</span></div>`;
                     });
-                    
                     gridContenedor.appendChild(filaItem);
                 });
 
@@ -336,19 +291,14 @@
                 document.getElementById('contingencia-iframe').style.display = 'none';
 
             } catch (error) {
-                console.warn("Falla en proxy. Activando Iframe:", error);
                 document.getElementById('panel-quiniela').style.display = 'none';
+                const iframe = document.getElementById('iframe-banner');
+                if(!iframe.src) iframe.src = targetUrl;
                 document.getElementById('contingencia-iframe').style.display = 'block';
             }
         }
-
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', cargarQuiniela);
-        } else {
-            cargarQuiniela();
-        }
-        
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', cargarQuiniela);
+        else cargarQuiniela();
         setInterval(cargarQuiniela, 30000);
     })();
 </script>
-<p style="color: transparent; user-select: none;">Resultados de quinielas y sorteos. Todos los resultados corresponden a los ultimos sorteos realizaados</p>
