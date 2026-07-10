@@ -217,27 +217,22 @@
     (function() {
         const proxyUrl = "https://corsproxy.io/?";
         const targetUrl = "https://www.tujugada.com.ar/data/qlas/cabezas_web.htm";
-    
+
         const provinciasObjetivo = [
             "Ciudad", "Provincia", "Santa Fe", "Cordoba", "Mendoza", 
             "Entre Rios", "Corrientes", "Neuquen", "Rio Negro", "Chaco", "Jujuy", "Formosa"
         ];
-    
-        async function cargarQuiniela() {
+
+        // 1. ADICIÓN: FUNCIÓN GLOBAL EXOCÉLULA PARA EXTRAER Y DEVOLVER SÓLO EL OBJETO DE DATOS
+        window.obtenerDatosEstructurados = async function() {
             try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 6000);
-    
-                const respuesta = await fetch(proxyUrl + encodeURIComponent(targetUrl), { signal: controller.signal });
-                clearTimeout(timeoutId);
-    
-                if (!respuesta.ok) throw new Error("Proxy offline");
+                const respuesta = await fetch(proxyUrl + encodeURIComponent(targetUrl));
+                if (!respuesta.ok) return { error: "Proxy offline" };
                 
                 const textoHtml = await respuesta.text();
                 const parser = new DOMParser();
                 const docInterno = parser.parseFromString(textoHtml, 'text/html');
-    
-                // EXTRAER FECHA
+
                 let fechaEncontrada = "--/--/----";
                 const todosLosFuentes = docInterno.querySelectorAll('font');
                 for (let font of todosLosFuentes) {
@@ -246,28 +241,22 @@
                         if (match) { fechaEncontrada = match[0]; break; }
                     }
                 }
-                document.getElementById('fecha-sorteo').textContent = fechaEncontrada;
-    
-                // PROCESAMIENTO DE MATRIZ
+
                 let datosLoterias = {};
                 const enlacesLoterias = docInterno.querySelectorAll('a.modtit');
                 
                 enlacesLoterias.forEach(enlace => {
                     const nombreProvincia = enlace.textContent.trim();
-                    
                     if (provinciasObjetivo.includes(nombreProvincia)) {
                         const subTabla = enlace.closest('table');
                         if (!subTabla) return;
-                        
                         const tdContenedor = subTabla.parentElement;
                         if (!tdContenedor) return;
-                        
                         const filaPrincipalTr = tdContenedor.closest('tr');
                         
                         if (filaPrincipalTr) {
                             const columnasPrincipales = Array.from(filaPrincipalTr.children);
                             let numerosDeEstaProvincia = [];
-                            
                             for (let i = 1; i <= 5; i++) {
                                 if (columnasPrincipales[i]) {
                                     numerosDeEstaProvincia.push(columnasPrincipales[i].textContent.trim());
@@ -279,20 +268,40 @@
                         }
                     }
                 });
-    
-                // EN LUGAR DE AGARRAR UN PARÁMETRO GET, ENVIAMOS LOS DATOS A LA WEB PADRE SI ESTÁ EN UN IFRAME
-                if (window.parent && window.parent !== window) {
-                    window.parent.postMessage({
-                        tipo: "DATOS_QUINIELA",
-                        fecha: fechaEncontrada,
-                        loterias: datosLoterias
-                    }, "*");
-                }
-    
-                // RENDERIZAR TABLA LOCAL EN GITHUB (Tu diseño original)
+
+                return {
+                    fecha: fechaEncontrada,
+                    loterias: datosLoterias
+                };
+            } catch (e) {
+                return { error: e.toString() };
+            }
+        };
+
+        // LÓGICA PRINCIPAL DE CARGA Y CONTROL DEL PARÁMETRO GET
+        async function cargarQuiniela() {
+            // DETECTAR PARÁMETRO GET (?formato=json)
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('formato') === 'json') {
+                // Ocultamos la interfaz visual para que quede pantalla limpia
+                document.getElementById('pizarra-main-html').style.display = 'none';
+                
+                // Obtenemos los datos limpios de la función y los imprimimos en texto puro
+                const dataOutput = await window.obtenerDatosEstructurados();
+                document.body.innerHTML = `<pre style="word-wrap: break-word; white-space: pre-wrap;">${JSON.stringify(dataOutput, null, 2)}</pre>`;
+                return; 
+            }
+
+            // SI NO HAY PARÁMETRO, SIGUE CON TU RENDERIZADO VISUAL HABITUAL
+            try {
+                const datosCompletos = await window.obtenerDatosEstructurados();
+                if (datosCompletos.error) throw new Error(datosCompletos.error);
+
+                document.getElementById('fecha-sorteo').textContent = datosCompletos.fecha;
+
                 const gridContenedor = document.getElementById('grid-resultados');
                 gridContenedor.innerHTML = "";
-    
+
                 const filaHeader = document.createElement('div');
                 filaHeader.className = "fila-grid cabecera-grid";
                 filaHeader.innerHTML = `
@@ -304,9 +313,9 @@
                     <div>Noct<br>21:00</div>
                 `;
                 gridContenedor.appendChild(filaHeader);
-    
+
                 provinciasObjetivo.forEach(provincia => {
-                    const arrayNumeros = datosLoterias[provincia] || ["----", "----", "----", "----", "----"];
+                    const arrayNumeros = datosCompletos.loterias[provincia] || ["----", "----", "----", "----", "----"];
                     
                     const filaItem = document.createElement('div');
                     filaItem.className = "fila-grid";
@@ -320,19 +329,19 @@
                             </div>`;
                     });
                     
-                        gridContenedor.appendChild(filaItem);
+                    gridContenedor.appendChild(filaItem);
                 });
-    
+
                 document.getElementById('panel-quiniela').style.display = 'block';
                 document.getElementById('contingencia-iframe').style.display = 'none';
-    
+
             } catch (error) {
                 console.warn("Falla en proxy. Activando Iframe:", error);
                 document.getElementById('panel-quiniela').style.display = 'none';
                 document.getElementById('contingencia-iframe').style.display = 'block';
             }
         }
-    
+
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', cargarQuiniela);
         } else {
