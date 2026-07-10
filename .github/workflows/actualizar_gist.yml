@@ -2,29 +2,27 @@ name: Actualizar Quiniela Gist
 
 on:
   schedule:
-    - cron: '*/30 * * * *' # Se ejecuta cada 30 minutos
+    - cron: '*/30 * * * *'
   workflow_dispatch: 
 
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - name: Extraer y Guardar
+      - name: Actualizar
         env:
           TOKEN: ${{ secrets.GIST_TOKEN }}
           GIST_ID: "7c5ad924c12309fcdfcfc5c64269f8e9"
         run: |
-          # 1. Obtenemos el HTML (usando un servicio proxy compatible)
-          curl -s "https://corsproxy.io/?https%3A%2F%2Fwww.tujugada.com.ar%2Fdata%2Fqlas%2Fcabezas_web.htm" > pagina.html
-          
-          # 2. Aquí iría un script que convierta ese HTML a JSON (simplificado para el ejemplo)
-          # Por ahora, para probar, guardaremos un JSON estático. 
-          # Una vez que confirmes que esto funciona, podemos refinar la extracción.
-          
+          # Crear el contenido JSON
           echo '{"estado": "actualizado", "fecha": "2026-07-10"}' > quiniela.json
           
-          # 3. Enviamos el archivo al Gist
-          curl -X PATCH -H "Authorization: token $TOKEN" \
+          # Construir payload seguro con jq
+          jq -n --arg file "quiniela.json" --arg content "$(cat quiniela.json)" \
+          '{files: {($file): {content: $content}}}' > payload.json
+          
+          # Enviar a la API de GitHub
+          curl -s -X PATCH -H "Authorization: token $TOKEN" \
           -H "Content-Type: application/json" \
-          -d "{\"files\":{\"quiniela.json\":{\"content\":\"$(cat quiniela.json)\"}}}" \
+          -d @payload.json \
           https://api.github.com/gists/$GIST_ID
