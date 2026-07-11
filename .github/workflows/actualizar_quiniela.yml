@@ -32,9 +32,7 @@ jobs:
           const { parse } = require("node-html-parser");
 
           async function procesar() {
-            const proxyUrl = "https://corsproxy.io/?";
-            const urlOriginal = "https://www.tujugada.com.ar/data/qlas/cabezas_web.htm";
-            const targetUrl = proxyUrl + encodeURIComponent(urlOriginal);
+            const targetUrl = "https://www.tujugada.com.ar/data/qlas/cabezas_web.htm";
 
             const provinciasObjetivo = [
               "Ciudad", "Provincia", "Santa Fe", "Cordoba", "Mendoza", 
@@ -42,9 +40,20 @@ jobs:
             ];
 
             try {
-              console.log("Iniciando descarga de datos a través de Proxy...");
-              const respuesta = await fetch(targetUrl);
-              if (!respuesta.ok) throw new Error("No se pudo acceder a la web oficial a través del proxy");
+              console.log("Iniciando descarga directa simulando navegador...");
+              
+              // Hacemos la petición directa pero camuflados como Chrome
+              const respuesta = await fetch(targetUrl, {
+                headers: {
+                  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+                  "Accept-Language": "es-ES,es;q=0.9",
+                  "Cache-Control": "no-cache",
+                  "Pragma": "no-cache"
+                }
+              });
+              
+              if (!respuesta.ok) throw new Error(`Error HTTP: ${respuesta.status} ${respuesta.statusText}`);
               
               const textoHtml = await respuesta.text();
               const root = parse(textoHtml);
@@ -73,7 +82,6 @@ jobs:
                   const filaPrincipalTr = tdContenedor.closest("tr");
                   
                   if (filaPrincipalTr) {
-                    // Filtrar solo elementos HTML válidos (nodos tipo 1)
                     const columnasPrincipales = filaPrincipalTr.childNodes.filter(node => node.nodeType === 1);
                     let numerosDeEstaProvincia = [];
                     for (let i = 1; i <= 5; i++) {
