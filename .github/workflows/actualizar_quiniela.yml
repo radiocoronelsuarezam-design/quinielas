@@ -2,9 +2,9 @@ name: Actualizar Gist de Quinielas
 
 on:
   schedule:
-    # Se ejecuta cada 15 minutos de forma automática
+    # Se ejecuta automáticamente cada 15 minutos
     - cron: '*/15 * * * *'
-  # Te permite ejecutarlo manualmente desde la pestaña "Actions" si quieres probarlo ya mismo
+  # Permite la ejecución manual desde la pestaña "Actions" en GitHub
   workflow_dispatch: 
 
 jobs:
@@ -32,16 +32,19 @@ jobs:
           const { parse } = require("node-html-parser");
 
           async function procesar() {
-            const targetUrl = "https://www.tujugada.com.ar/data/qlas/cabezas_web.htm";
+            const proxyUrl = "https://corsproxy.io/?";
+            const urlOriginal = "https://www.tujugada.com.ar/data/qlas/cabezas_web.htm";
+            const targetUrl = proxyUrl + encodeURIComponent(urlOriginal);
+
             const provinciasObjetivo = [
               "Ciudad", "Provincia", "Santa Fe", "Cordoba", "Mendoza", 
               "Entre Rios", "Corrientes", "Neuquen", "Rio Negro", "Chaco", "Jujuy", "Formosa"
             ];
 
             try {
-              console.log("Iniciando descarga de datos...");
+              console.log("Iniciando descarga de datos a través de Proxy...");
               const respuesta = await fetch(targetUrl);
-              if (!respuesta.ok) throw new Error("No se pudo acceder a la web oficial");
+              if (!respuesta.ok) throw new Error("No se pudo acceder a la web oficial a través del proxy");
               
               const textoHtml = await respuesta.text();
               const root = parse(textoHtml);
@@ -70,7 +73,8 @@ jobs:
                   const filaPrincipalTr = tdContenedor.closest("tr");
                   
                   if (filaPrincipalTr) {
-                    const columnasPrincipales = filaPrincipalTr.childNodes.filter(node => node.nodeType === 1); // Filtrar solo elementos HTML
+                    // Filtrar solo elementos HTML válidos (nodos tipo 1)
+                    const columnasPrincipales = filaPrincipalTr.childNodes.filter(node => node.nodeType === 1);
                     let numerosDeEstaProvincia = [];
                     for (let i = 1; i <= 5; i++) {
                       if (columnasPrincipales[i]) {
@@ -89,9 +93,9 @@ jobs:
                 loterias: datosLoterias
               };
 
-              console.log("Estructura JSON generada con éxito:", JSON.stringify(jsonFinal));
+              console.log("Estructura JSON generada con éxito.");
 
-              // 3. Enviar actualización al Gist de GitHub via API
+              // 3. Enviar actualización al Gist
               console.log("Enviando datos al Gist...");
               const resGist = await fetch(`https://api.github.com/gists/${process.env.GIST_ID}`, {
                 method: "PATCH",
