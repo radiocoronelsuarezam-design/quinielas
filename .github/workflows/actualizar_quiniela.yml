@@ -1,0 +1,129 @@
+name: Actualizar Gist de Quinielas
+
+on:
+  schedule:
+    # Se ejecuta cada 15 minutos de forma automática
+    - cron: '*/15 * * * *'
+  # Te permite ejecutarlo manualmente desde la pestaña "Actions" si quieres probarlo ya mismo
+  workflow_dispatch: 
+
+jobs:
+  run-scraper:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependencias de scraping
+        run: npm install node-html-parser
+
+      - name: Ejecutar Extracción y Actualizar Gist
+        env:
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+          GIST_ID: ${{ secrets.GIST_ID }}
+        run: |
+          node -e '
+          const { parse } = require("node-html-parser");
+
+          async function procesar() {
+            const targetUrl = "https://www.tujugada.com.ar/data/qlas/cabezas_web.htm";
+            const provinciasObjetivo = [
+              "Ciudad", "Provincia", "Santa Fe", "Cordoba", "Mendoza", 
+              "Entre Rios", "Corrientes", "Neuquen", "Rio Negro", "Chaco", "Jujuy", "Formosa"
+            ];
+
+            try {
+              console.log("Iniciando descarga de datos...");
+              const respuesta = await fetch(targetUrl);
+              if (!respuesta.ok) throw new Error("No se pudo acceder a la web oficial");
+              
+              const textoHtml = await respuesta.text();
+              const root = parse(textoHtml);
+
+              // 1. Extraer la Fecha
+              let fechaEncontrada = "--/--/----";
+              const todosLosFuentes = root.querySelectorAll("font");
+              for (let font of todosLosFuentes) {
+                if (font.textContent.includes("FECHA:")) {
+                  const match = font.textContent.match(/\d{1,2}\/\d{1,2}\/\d{4}/);
+                  if (match) { fechaEncontrada = match[0]; break; }
+                }
+              }
+
+              // 2. Extraer los números por Provincia
+              let datosLoterias = {};
+              const enlacesLoterias = root.querySelectorAll("a.modtit");
+              
+              enlacesLoterias.forEach(enlace => {
+                const nombreProvincia = enlace.textContent.trim();
+                if (provinciasObjetivo.includes(nombreProvincia)) {
+                  const subTabla = enlace.closest("table");
+                  if (!subTabla) return;
+                  const tdContenedor = subTabla.parentNode;
+                  if (!tdContenedor) return;
+                  const filaPrincipalTr = tdContenedor.closest("tr");
+                  
+                  if (filaPrincipalTr) {
+                    const columnasPrincipales = filaPrincipalTr.childNodes.filter(node => node.nodeType === 1); // Filtrar solo elementos HTML
+                    let numerosDeEstaProvincia = [];
+                    for (let i = 1; i <= 5; i++) {
+                      if (columnasPrincipales[i]) {
+                        numerosDeEstaProvincia.push(columnasPrincipales[i].textContent.trim());
+                      } else {
+                        numerosDeEstaProvincia.push("----");
+                      }
+                    }
+                    datosLoterias[nombreProvincia] = numerosDeEstaProvincia;
+                  }
+                }
+              });
+
+              const jsonFinal = {
+                fecha: fechaEncontrada,
+                loterias: datosLoterias
+              };
+
+              console.log("Estructura JSON generada con éxito:", JSON.stringify(jsonFinal));
+
+              // 3. Enviar actualización al Gist de GitHub via API
+              console.log("Enviando datos al Gist...");
+              const resGist = await fetch(`https://api.github.com/gists/${process.env.GIST_ID}`, {
+                method: "PATCH",
+                headers: {
+                  "Authorization": `Bearer ${process.env.GIST_TOKEN}`,
+                  "Accept": "application/vnd.github+json",
+                  "Content-Type": "application/json",
+                  "User-Agent": "GitHub-Actions-Scraper"
+                },
+                body: JSON.stringify({
+                  description: "Resultados de Quiniela Automatizados",
+                  files: {
+                    "quiniela.json": {
+                      content: JSON.stringify(jsonFinal, null, 2)
+                    }
+                  }
+                })
+              });
+
+              if (resGist.ok) {
+                console.log("¡Gist actualizado correctamente en GitHub!");
+              } else {
+                const errorData = await resGist.json();
+                console.error("Error al guardar en Gist:", errorData);
+                process.exit(1);
+              }
+
+            } catch (e) {
+              console.error("Fallo en la ejecución:", e.toString());
+              process.exit(1);
+            }
+          }
+
+          procesar();
+          '
