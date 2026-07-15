@@ -1,227 +1,283 @@
-<style>
-    body {
-        margin: 0;
-        padding: 0;
-    }
-    
-    .pizarra-contenedor {
-        width: 100%;
-        box-sizing: border-box;
-        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-        background-color: #f8fafc;
-        padding: 20px 10px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 25px;
-    }
-
-    #panel-quiniela {
-        width: 100%;
-        max-width: 100%;
-        background: #ffffff;
-        border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
-        border: 1px solid #e2e8f0;
-        overflow: hidden;
-        box-sizing: border-box;
-    }
-
-    .cabecera-oficial {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 22px 24px;
-        background-color: #ffffff;
-        border-bottom: 1px solid #f1f5f9;
-    }
-
-    .cabecera-titulo {
-        font-size: 16px;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: #0f172a;
-        margin: 0;
-    }
-
-    .pastilla-fecha {
-        background-color: #f1f5f9;
-        color: #475569;
-        padding: 6px 14px;
-        border-radius: 9999px;
-        font-size: 12px;
-        font-weight: 700;
-        border: 1px solid #e2e8f0;
-    }
-
-    .tabla-grid {
-        padding: 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        box-sizing: border-box;
-    }
-
-    .fila-grid {
-        display: grid;
-        grid-template-columns: 2fr repeat(5, 1fr); 
-        align-items: center;
-        padding: 12px 4px;
-        border-bottom: 1px solid #f8fafc;
-        box-sizing: border-box;
-    }
-
-    .cabecera-grid {
-        background-color: #f8fafc;
-        border-bottom: 2px solid #e2e8f0;
-        font-weight: 700;
-        font-size: 11px;
-        color: #64748b;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        text-align: center;
-        padding: 14px 4px;
-        border-radius: 8px;
-        margin-bottom: 6px;
-    }
-
-    .cabecera-grid div:first-child {
-        text-align: left;
-        padding-left: 8px;
-        color: #475569;
-    }
-
-    .celda-provincia {
-        font-weight: 600;
-        font-size: 14px;
-        color: #334155;
-        padding-left: 8px;
-    }
-
-    .celda-numero {
-        text-align: center;
-    }
-
-    .badge-numero {
-        font-size: 13px;
-        font-weight: 600;
-        color: #cbd5e1;
-        background: #f8fafc;
-        padding: 6px 2px;
-        border-radius: 6px;
-        display: block;
-        margin: 0 3px;
-    }
-
-    .numero-activo {
-        color: #166534 !important;
-        background: #dcfce7 !important;
-        font-weight: 700 !important;
-    }
-
-    .fila-grid:not(.cabecera-grid):hover {
-        background-color: #f8fafc;
-        border-radius: 8px;
-    }
-
-    @media (max-width: 576px) {
-        .cabecera-oficial {
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultados de Quinielas</title>
+    <style>
+        .pizarra-contenedor {
+            width: 100%;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: #f8fafc;
+            padding: 20px 10px;
+            display: flex;
             flex-direction: column;
-            gap: 10px;
-            text-align: center;
-            padding: 15px;
+            align-items: center;
+            gap: 25px;
         }
 
-        .cabecera-grid {
-            display: none;
-        }
-
-        .fila-grid {
-            grid-template-columns: 1fr;
-            gap: 8px;
-            padding: 15px;
+        #panel-quiniela {
+            width: 100%;
+            max-width: 100%; /* Ocupa todo el ancho disponible */
             background: #ffffff;
-            border: 1px solid #f1f5f9;
-            border-radius: 12px;
-            margin-bottom: 10px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.01);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            box-sizing: border-box;
         }
 
-        .celda-provincia {
-            font-size: 15px;
-            text-align: center;
-            padding: 0;
-            border-bottom: 1px dashed #e2e8f0;
-            padding-bottom: 6px;
-            color: #0f172a;
-        }
-
-        .celda-numero {
+        .cabecera-oficial {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 2px 5px;
+            padding: 22px 24px;
+            background-color: #ffffff;
+            border-bottom: 1px solid #f1f5f9;
         }
 
-        .celda-numero::before {
-            font-size: 11px;
+        .cabecera-titulo {
+            font-size: 16px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #0f172a;
+            margin: 0;
+        }
+
+        .pastilla-fecha {
+            background-color: #f1f5f9;
+            color: #475569;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 12px;
             font-weight: 700;
+            border: 1px solid #e2e8f0;
+        }
+
+        /* Contenedor del selector móvil (oculto por defecto en escritorio) */
+        .filtro-movil-container {
+            display: none;
+            padding: 0 16px 10px 16px;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        .selector-movil {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #cbd5e1;
+            background-color: #ffffff;
+            color: #334155;
+            font-size: 14px;
+            font-weight: 600;
+            outline: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            cursor: pointer;
+        }
+
+        .tabla-grid {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            box-sizing: border-box;
+        }
+
+        /* Diseño Grid para pantallas grandes (Escritorio / Tablet) */
+        .fila-grid {
+            display: grid;
+            grid-template-columns: 2fr repeat(5, 1fr); 
+            align-items: center;
+            padding: 12px 4px;
+            border-bottom: 1px solid #f8fafc;
+            box-sizing: border-box;
+        }
+
+        .cabecera-grid {
+            background-color: #f8fafc;
+            border-bottom: 2px solid #e2e8f0;
+            font-weight: 700;
+            font-size: 11px;
             color: #64748b;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: center;
+            padding: 14px 4px;
+            border-radius: 8px;
+            margin-bottom: 6px;
         }
-        .celda-numero:nth-child(2)::before { content: "Prev (10:15)"; }
-        .celda-numero:nth-child(3)::before { content: "Prim (12:00)"; }
-        .celda-numero:nth-child(4)::before { content: "Matu (15:00)"; }
-        .celda-numero:nth-child(5)::before { content: "Vesp (18:00)"; }
-        .celda-numero:nth-child(6)::before { content: "Noct (21:00)"; }
+
+        .cabecera-grid div:first-child {
+            text-align: left;
+            padding-left: 8px;
+            color: #475569;
+        }
+
+        .celda-provincia {
+            font-weight: 600;
+            font-size: 14px;
+            color: #334155;
+            padding-left: 8px;
+        }
+
+        .celda-numero {
+            text-align: center;
+        }
 
         .badge-numero {
-            width: 80px;
-            text-align: center;
-            margin: 0;
-            padding: 5px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #cbd5e1;
+            background: #f8fafc;
+            padding: 6px 2px;
+            border-radius: 6px;
+            display: block;
+            margin: 0 3px;
         }
-    }
 
-    #contingencia-iframe {
-        display: none;
-        width: 100%;
-        background: #ffffff;
-        border-radius: 16px;
-        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
-        border: 1px solid #e2e8f0;
-        padding: 10px;
-        text-align: center;
-        box-sizing: border-box;
-    }
-    #contingencia-iframe iframe {
-        border: none;
-        width: 325px;
-        height: 290px;
-        overflow: hidden;
-    }
-</style>
+        .numero-activo {
+            color: #166534 !important;
+            background: #dcfce7 !important;
+            font-weight: 700 !important;
+        }
 
-<div class="pizarra-contenedor" id="pizarra-main-html">
+        .fila-grid:not(.cabecera-grid):hover {
+            background-color: #f8fafc;
+            border-radius: 8px;
+        }
+
+        /* ==========================================================================
+           ADAPTACIÓN RESPONSIVA PARA MÓVILES (Menos de 576px)
+           ========================================================================== */
+        @media (max-width: 576px) {
+            .cabecera-oficial {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+                padding: 15px;
+            }
+
+            /* Mostramos el selector de quinielas */
+            .filtro-movil-container {
+                display: block;
+            }
+
+            /* Ocultamos la cabecera horizontal clásica */
+            .cabecera-grid {
+                display: none !important;
+            }
+
+            /* Convertimos cada fila en una tarjeta independiente */
+            .fila-grid {
+                grid-template-columns: 1fr;
+                gap: 8px;
+                padding: 15px;
+                background: #ffffff;
+                border: 1px solid #f1f5f9;
+                border-radius: 12px;
+                margin-bottom: 10px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.01);
+            }
+
+            /* Si la fila está filtrada (no seleccionada), la ocultamos en móvil */
+            .fila-grid.oculto-filtro {
+                display: none !important;
+            }
+
+            /* Ocultamos por completo el nombre duplicado de la lotería en las tarjetas móviles */
+            .celda-provincia {
+                display: none !important;
+            }
+
+            /* Forzamos a que se muestre el nombre del turno al lado del número */
+            .celda-numero {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 2px 5px;
+            }
+
+            /* Creamos la etiqueta del turno dinámicamente en móviles */
+            .celda-numero:nth-child(2)::before { content: "Prev (10:15)"; }
+            .celda-numero:nth-child(3)::before { content: "Prim (12:00)"; }
+            .celda-numero:nth-child(4)::before { content: "Matu (15:00)"; }
+            .celda-numero:nth-child(5)::before { content: "Vesp (18:00)"; }
+            .celda-numero:nth-child(6)::before { content: "Noct (21:00)"; }
+
+            .celda-numero::before {
+                font-size: 11px;
+                font-weight: 700;
+                color: #64748b;
+                text-transform: uppercase;
+            }
+
+            .badge-numero {
+                width: 80px;
+                text-align: center;
+                margin: 0;
+                padding: 5px;
+            }
+        }
+
+        /* CONTINGENCIA IFRAME */
+        #contingencia-iframe {
+            display: none;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+            border: 1px solid #e2e8f0;
+            padding: 10px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        #contingencia-iframe iframe {
+            border: none;
+            width: 325px;
+            height: 290px;
+            overflow: hidden;
+        }
+        .alerta-contingencia {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-bottom: 8px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+
+<div class="pizarra-contenedor">
+
     <div id="panel-quiniela">
         <header class="cabecera-oficial">
             <h1 class="cabecera-titulo">Resultados de quinielas</h1>
             <span class="pastilla-fecha" id="fecha-sorteo">--/--/----</span>
         </header>
+        
+        <!-- Filtro Combobox exclusivo para móviles -->
+        <div class="filtro-movil-container">
+            <select id="selector-provincia-movil" class="selector-movil">
+                <!-- Se poblará de forma dinámica vía script -->
+            </select>
+        </div>
+        
         <div class="tabla-grid" id="grid-resultados">
             <div style="padding: 20px; color: #64748b; font-size: 14px; text-align: center;">Cargando datos oficiales...</div>
         </div>
     </div>
+
     <div id="contingencia-iframe">
         <iframe id="iframe-banner" src="https://www.tujugada.com.ar/data/qlas/cabezas_web.htm" style="height:500px; width:330px; margin: 0 auto;"></iframe>
     </div>
+
 </div>
 
 <script>
-    // VARIABLE GLOBAL EXPORTADA AL WINDOW PARA LECTURA EXTERNA
-    window.datosQuiniela = null;
-
     (function() {
         const proxyUrl = "https://corsproxy.io/?";
         const targetUrl = "https://www.tujugada.com.ar/data/qlas/cabezas_web.htm";
@@ -231,15 +287,24 @@
             "Entre Rios", "Corrientes", "Neuquen", "Rio Negro", "Chaco", "Jujuy", "Formosa"
         ];
 
-        window.obtenerDatosEstructurados = async function() {
+        // Se selecciona por defecto el primer elemento mapeado
+        let seleccionFiltroActual = provinciasObjetivo[0].toLowerCase().replace(/\s+/g, '-');
+
+        async function cargarQuiniela() {
             try {
-                const respuesta = await fetch(proxyUrl + encodeURIComponent(targetUrl));
-                if (!respuesta.ok) return { error: "Proxy offline" };
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+                const respuesta = await fetch(proxyUrl + encodeURIComponent(targetUrl), { signal: controller.signal });
+                clearTimeout(timeoutId);
+
+                if (!respuesta.ok) throw new Error("Proxy offline");
                 
                 const textoHtml = await respuesta.text();
                 const parser = new DOMParser();
                 const docInterno = parser.parseFromString(textoHtml, 'text/html');
 
+                // EXTRAER FECHA
                 let fechaEncontrada = "--/--/----";
                 const todosLosFuentes = docInterno.querySelectorAll('font');
                 for (let font of todosLosFuentes) {
@@ -248,22 +313,28 @@
                         if (match) { fechaEncontrada = match[0]; break; }
                     }
                 }
+                document.getElementById('fecha-sorteo').textContent = fechaEncontrada;
 
+                // PROCESAMIENTO DE MATRIZ
                 let datosLoterias = {};
                 const enlacesLoterias = docInterno.querySelectorAll('a.modtit');
                 
                 enlacesLoterias.forEach(enlace => {
                     const nombreProvincia = enlace.textContent.trim();
+                    
                     if (provinciasObjetivo.includes(nombreProvincia)) {
                         const subTabla = enlace.closest('table');
                         if (!subTabla) return;
+                        
                         const tdContenedor = subTabla.parentElement;
                         if (!tdContenedor) return;
+                        
                         const filaPrincipalTr = tdContenedor.closest('tr');
                         
                         if (filaPrincipalTr) {
                             const columnasPrincipales = Array.from(filaPrincipalTr.children);
                             let numerosDeEstaProvincia = [];
+                            
                             for (let i = 1; i <= 5; i++) {
                                 if (columnasPrincipales[i]) {
                                     numerosDeEstaProvincia.push(columnasPrincipales[i].textContent.trim());
@@ -276,26 +347,7 @@
                     }
                 });
 
-                return {
-                    fecha: fechaEncontrada,
-                    loterias: datosLoterias
-                };
-            } catch (e) {
-                return { error: e.toString() };
-            }
-        };
-
-        async function cargarQuiniela() {
-            try {
-                const datosCompletos = await window.obtenerDatosEstructurados();
-                if (datosCompletos.error) throw new Error(datosCompletos.error);
-
-                // ASIGNACIÓN PÚBLICA: Guardamos los datos limpios en la variable global
-                window.datosQuiniela = datosCompletos;
-
-                // Actualizar interfaz visual de forma normal
-                document.getElementById('fecha-sorteo').textContent = datosCompletos.fecha;
-
+                // RENDERIZAR TABLA
                 const gridContenedor = document.getElementById('grid-resultados');
                 gridContenedor.innerHTML = "";
 
@@ -311,11 +363,25 @@
                 `;
                 gridContenedor.appendChild(filaHeader);
 
+                // Poblamos dinámicamente el Combobox móvil si es el primer inicio
+                const selectMovil = document.getElementById('selector-provincia-movil');
+                if (selectMovil && selectMovil.options.length === 0) {
+                    provinciasObjetivo.forEach(provincia => {
+                        const opt = document.createElement('option');
+                        opt.value = provincia.toLowerCase().replace(/\s+/g, '-');
+                        opt.textContent = provincia;
+                        selectMovil.appendChild(opt);
+                    });
+                }
+
                 provinciasObjetivo.forEach(provincia => {
-                    const arrayNumeros = datosCompletos.loterias[provincia] || ["----", "----", "----", "----", "----"];
+                    const arrayNumeros = datosLoterias[provincia] || ["----", "----", "----", "----", "----"];
                     
                     const filaItem = document.createElement('div');
                     filaItem.className = "fila-grid";
+                    const idProvinciaAtributo = provincia.toLowerCase().replace(/\s+/g, '-');
+                    filaItem.setAttribute('data-provincia', idProvinciaAtributo);
+                    
                     filaItem.innerHTML += `<div class="celda-provincia">${provincia}</div>`;
                     
                     arrayNumeros.forEach(num => {
@@ -329,16 +395,45 @@
                     gridContenedor.appendChild(filaItem);
                 });
 
+                // Aplicamos el filtro al refrescar los datos
+                aplicarFiltroMovil(seleccionFiltroActual);
+
                 document.getElementById('panel-quiniela').style.display = 'block';
                 document.getElementById('contingencia-iframe').style.display = 'none';
 
             } catch (error) {
                 console.warn("Falla en proxy. Activando Iframe:", error);
                 document.getElementById('panel-quiniela').style.display = 'none';
+                
+                const iframe = document.getElementById('iframe-banner');
+                if(!iframe.src) {
+                    iframe.src = targetUrl;
+                }
                 document.getElementById('contingencia-iframe').style.display = 'block';
             }
         }
 
+        // Función para aplicar visibilidad de forma unitaria en móviles
+        function aplicarFiltroMovil(valorFiltro) {
+            seleccionFiltroActual = valorFiltro;
+            const filas = document.querySelectorAll('#grid-resultados .fila-grid:not(.cabecera-grid)');
+
+            filas.forEach(fila => {
+                const provinciaFila = fila.getAttribute('data-provincia');
+                if (provinciaFila === valorFiltro) {
+                    fila.classList.remove('oculto-filtro');
+                } else {
+                    fila.classList.add('oculto-filtro');
+                }
+            });
+        }
+
+        // Listener para capturar el combobox
+        document.getElementById('selector-provincia-movil').addEventListener('change', function(e) {
+            aplicarFiltroMovil(e.target.value);
+        });
+
+        // Inicio automático seguro
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', cargarQuiniela);
         } else {
@@ -347,21 +442,7 @@
         
         setInterval(cargarQuiniela, 30000);
     })();
-
-    // Escuchar peticiones de otros sitios web
-    window.addEventListener("message", function(event) {
-        // OPCIONAL POR SEGURIDAD: Puedes validar qué sitio web tiene permiso de pedir los datos
-        // if (event.origin !== "https://el-otro-sitio-web.com") return;
-
-        // Si el otro sitio web envía un mensaje que dice "dame_datos"
-        if (event.data === "dame_datos") {
-            // Le respondemos enviándole la variable global con los datos de las quinielas
-            event.source.postMessage({
-                tipo: "respuesta_quiniela",
-                datos: window.datosQuiniela
-            }, event.origin);
-        }
-    }, false);
 </script>
 
-<p style="color: transparent; user-select: none;">Resultados de quinielas y sorteos. Todos los resultados corresponden a los ultimos sorteos realizaados</p>
+</body>
+</html>
