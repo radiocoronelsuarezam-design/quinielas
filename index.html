@@ -295,13 +295,13 @@
         //Comprobamos parametro GET
         // 1. Obtienes los parámetros de la URL actual
         const urlParams = new URLSearchParams(window.location.search);
-        const titID = document.getElementById('#tituloQuiniela');
+        const titID = document.getElementById('tituloQuiniela');
         
         // 2. Extraes el valor del parámetro 'titulo'
         const quitarTitulo = urlParams.get('titulo');
 
-        if (quitarTuitulo === true) {
-            titID.style.dysplay = 'none';
+        if (quitarTitulo === 'true') {
+            titID.style.display = 'none';
         }
 
         // Se selecciona por defecto el primer elemento mapeado
