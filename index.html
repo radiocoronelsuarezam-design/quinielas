@@ -260,7 +260,7 @@
 
     <div id="panel-quiniela">
         <header class="cabecera-oficial">
-            <h1 class="cabecera-titulo">Resultados de quinielas</h1>
+            <h1 id="tituloQuiniela"class="cabecera-titulo">Resultados de quinielas</h1>
             <span class="pastilla-fecha" id="fecha-sorteo">--/--/----</span>
         </header>
         
@@ -291,6 +291,18 @@
             "Ciudad", "Provincia", "Santa Fe", "Cordoba", "Mendoza", 
             "Entre Rios", "Corrientes", "Neuquen", "Rio Negro", "Chaco", "Jujuy", "Formosa"
         ];
+
+        //Comprobamos parametro GET
+        // 1. Obtienes los parámetros de la URL actual
+        const urlParams = new URLSearchParams(window.location.search);
+        const titID = document.getElementById('#tituloQuiniela');
+        
+        // 2. Extraes el valor del parámetro 'titulo'
+        const quitarTitulo = urlParams.get('titulo');
+
+        if (quitarTuitulo === true) {
+            titID.style.dysplay = 'none';
+        }
 
         // Se selecciona por defecto el primer elemento mapeado
         let seleccionFiltroActual = provinciasObjetivo[0].toLowerCase().replace(/\s+/g, '-');
