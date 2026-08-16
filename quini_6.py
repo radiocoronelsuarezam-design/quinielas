@@ -15,18 +15,29 @@ GITHUB_TOKEN = os.getenv("GIT_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
 NOMBRE_ARCHIVO_GIST = "quini_6_resultados.xml"
 
-# Validar credenciales de la API de Gemini
+print(f"[DEBUG] AI_KEY presente: {bool(GEMINI_API_KEY)}")
+print(f"[DEBUG] GITHUB_TOKEN presente: {bool(GITHUB_TOKEN)}")
+print(f"[DEBUG] GIST_ID presente: {bool(GIST_ID)} (Valor recibido: '{GIST_ID}')")
+
 if not GEMINI_API_KEY:
-    print("Error crítico: La variable de entorno AI_KEY no está configurada.", file=sys.stderr)
+    print("[ERROR CRÍTICO] La variable AI_KEY no está configurada en los Secrets.", file=sys.stderr)
     sys.exit(1)
 
+# Modelos a probar
 MODELOS_GEMINI = [
-    "gemini-3.5-flash-lite",
-    "gemini-2.5-flash-lite",
-    "gemini-flash-latest"
+    "gemini-2.5-flash",
+    "gemini-1.5-flash",
+    "gemini-2.0-flash"
 ]
 
-client = genai.Client(api_key=GEMINI_API_KEY)
+try:
+    print("[DEBUG] Inicializando cliente de Google GenAI...")
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    print("[DEBUG] Cliente inicializado correctamente.")
+except Exception as e:
+    print(f"[ERROR CRÍTICO] Error al inicializar el cliente de Gemini: {e}", file=sys.stderr)
+    traceback.print_exc()
+    sys.exit(1)
 
 
 def limpiar_id_gist(gist_input):
@@ -39,21 +50,35 @@ def limpiar_id_gist(gist_input):
 
 def obtener_ultimo_sorteo():
     clean_gist_id = limpiar_id_gist(GIST_ID)
+    print(f"[DEBUG] Gist ID limpio: '{clean_gist_id}'")
+    
     if not clean_gist_id or not GITHUB_TOKEN:
-        print("Aviso: GIST_ID o GITHUB_TOKEN no disponibles. Se tomará sorteo base 3389.")
+        print("[DEBUG] GIST_ID o GITHUB_TOKEN faltantes. Se usará el sorteo base 3389.")
         return 3389
 
     url = f"https://api.github.com/gists/{clean_gist_id}"
     headers = {"Authorization": f"token {GITHUB_TOKEN}"}
     try:
+        print(f"[DEBUG] Consultando API de GitHub Gist: {url}")
         response = requests.get(url, headers=headers, timeout=10)
+        print(f"[DEBUG] HTTP Status Gist: {response.status_code}")
+        
         if response.status_code == 200:
-            content = response.json()['files'][NOMBRE_ARCHIVO_GIST]['content']
-            match = re.search(r"<Sorteo>(\d+)</Sorteo>", content)
-            if match:
-                return int(match.group(1))
+            files = response.json().get('files', {})
+            if NOMBRE_ARCHIVO_GIST in files:
+                content = files[NOMBRE_ARCHIVO_GIST]['content']
+                match = re.search(r"<Sorteo>(\d+)</Sorteo>", content)
+                if match:
+                    sorteo_encontrado = int(match.group(1))
+                    print(f"[DEBUG] Último sorteo hallado en Gist: {sorteo_encontrado}")
+                    return sorteo_encontrado
+            else:
+                print(f"[DEBUG] El archivo '{NOMBRE_ARCHIVO_GIST}' no existe aún en el Gist.")
+        else:
+            print(f"[DEBUG] Error al leer Gist ({response.status_code}): {response.text}")
     except Exception as e:
-        print(f"No se pudo consultar el Gist para obtener el último sorteo: {e}")
+        print(f"[DEBUG] Excepción al consultar el Gist: {e}")
+    
     return 3389
 
 
@@ -62,21 +87,6 @@ def procesar_pdf_con_gemini(pdf_bytes, num_sorteo):
 Eres un asistente experto en procesamiento visual de extractos oficiales de Lotería (Quini 6).
 Analiza detenidamente la imagen/layout del PDF adjunto correspondiente al sorteo de Quini 6 y genera ÚNICAMENTE el código XML formateado de acuerdo con las siguientes reglas estrictas.
 
-REGLAS DE LECTURA VISUAL Y ESTRUCTURA (MUY IMPORTANTE):
-1. **MODALIDADES PRINCIPALES (Tradicional Primer Sorteo, Tradicional La Segunda, Revancha)**:
-   Presentan la misma estructura de datos:
-   - 1° Premio (6 aciertos): Pozo y cantidad de apuestas ganadoras.
-   - 2° Premio (5 aciertos): Pozo y cantidad de apuestas ganadoras.
-   - 3° Premio (4 aciertos): Pozo y cantidad de apuestas ganadoras.
-   - Estímulo: Premio y ganadores del estímulo.
-   (Nota: No incluyas los valores de "Premio por Apuesta" en el XML, ya que se calculan externamente).
-
-2. **SIEMPRE SALE**:
-   - Muestra obligatoriamente la cantidad de aciertos máximos conseguidos (etiqueta <Aciertos>), el pozo y la cantidad de apuestas ganadoras de esa modalidad, junto con su respectivo estímulo.
-
-3. **PREMIO EXTRA**:
-   - En la sección "Premio Extra", NO omitas NINGÚN número. Incluye los 18 números ganadores que componen el Premio Extra (los 6 de Primer Sorteo + los 6 de La Segunda + los 6 de Revancha), INCLUYENDO los números repetidos/tachados (N01 hasta N18).
-
 ESTRUCTURA XML REQUERIDA:
 <DatosSorteo>
 	<Version>1</Version>
@@ -84,198 +94,91 @@ ESTRUCTURA XML REQUERIDA:
 	<Juego>Quini 6</Juego>
 	<Sorteo>{num_sorteo}</Sorteo>
 	<FechaSorteo>[Fecha DD/MM/AAAA]</FechaSorteo>
-	<PozoEstimado>[Monto numérico simple sin $ ni puntos, ej: 12500000000.00]</PozoEstimado>
+	<PozoEstimado>[Monto numérico simple sin $ ni puntos]</PozoEstimado>
 	<Extracto>
 		<Modalidad>[Nombre de la modalidad]</Modalidad>
 		<Moneda>[ARS o U$S]</Moneda>
-		<!-- Si es Siempre Sale agregar: <Aciertos>[número de aciertos]</Aciertos> -->
 		<Suerte>
 			<N01>[2 dígitos]</N01>
-			...
 		</Suerte>
 		<Pozos>
-			<Premio01>[Monto decimal, ej: 7064308818.00]</Premio01>
-			<Premio02>[Monto decimal]</Premio02>
-			<Premio03>[Monto decimal]</Premio03>
-			<Estimulo>[Monto decimal]</Estimulo>
+			<Premio01>[Monto decimal]</Premio01>
 		</Pozos>
 		<Ganadores>
 			<Ganadores01>[Ganadores 1° Premio]</Ganadores01>
-			<Ganadores02>[Ganadores 2° Premio]</Ganadores02>
-			<Ganadores03>[Ganadores 3° Premio]</Ganadores03>
-			<GanadoresEstimulo>[Ganadores Estímulo]</GanadoresEstimulo>
 		</Ganadores>
 	</Extracto>
 </DatosSorteo>
 
-REGLAS DE FORMATO NUMÉRICO:
-- Sin símbolos de moneda ('$'), sin puntos separadores de miles y con punto decimal para centavos (ej: 7064308818.00).
-- Si una categoría es "VACANTE", poner 0 en la cantidad de ganadores.
-- Retorna ÚNICAMENTE el código XML dentro de un bloque xml sin texto adicional.
+Retorna ÚNICAMENTE el código XML dentro de un bloque xml sin texto adicional.
 """
 
-    max_intentos_por_modelo = 2
-
     for modelo in MODELOS_GEMINI:
-        print(f"\nProcesando PDF con modelo: {modelo}...")
-        for intento in range(max_intentos_por_modelo):
-            try:
-                response = client.models.generate_content(
-                    model=modelo,
-                    contents=[
-                        types.Part.from_bytes(
-                            data=pdf_bytes,
-                            mime_type='application/pdf',
-                        ),
-                        prompt_instrucciones
-                    ],
-                    config=types.GenerateContentConfig(
-                        temperature=0.0
-                    )
-                )
-                
-                respuesta_texto = response.text
-                
-                match_xml = re.search(r"```xml\s*(.*?)\s*```", respuesta_texto, re.DOTALL)
-                if match_xml:
-                    print(f"¡Éxito obtenido con {modelo}!")
-                    return match_xml.group(1).strip()
-                
-                match_gen = re.search(r"```\s*(.*?)\s*```", respuesta_texto, re.DOTALL)
-                if match_gen and "<DatosSorteo>" in match_gen.group(1):
-                    print(f"¡Éxito obtenido con {modelo}!")
-                    return match_gen.group(1).strip()
-
-                match_tag = re.search(r"(<DatosSorteo>.*?</DatosSorteo>)", respuesta_texto, re.DOTALL)
-                if match_tag:
-                    print(f"¡Éxito obtenido con {modelo}!")
-                    return match_tag.group(1).strip()
-                
-                if "<DatosSorteo>" in respuesta_texto:
-                    print(f"¡Éxito obtenido con {modelo}!")
-                    return respuesta_texto.strip()
-                
-                print(f"El modelo {modelo} respondió pero sin la estructura XML requerida.")
-                
-            except (errors.ServerError, errors.ClientError) as e:
-                print(f"Aviso en {modelo}: {e}")
-                if ("503" in str(e) or "429" in str(e)) and intento < max_intentos_por_modelo - 1:
-                    print("Reintentando en 5 segundos...")
-                    time.sleep(5)
-                else:
-                    print("Pasando al siguiente modelo disponible...")
-                    break
-                    
-            except Exception as e:
-                print(f"Error inesperado con {modelo}: {e}")
-                break
-
-    raise RuntimeError("Todos los modelos de Gemini fallaron o no están disponibles en este momento.")
+        print(f"\n[DEBUG] Probando modelo: {modelo}...")
+        try:
+            response = client.models.generate_content(
+                model=modelo,
+                contents=[
+                    types.Part.from_bytes(
+                        data=pdf_bytes,
+                        mime_type='application/pdf',
+                    ),
+                    prompt_instrucciones
+                ],
+                config=types.GenerateContentConfig(temperature=0.0)
+            )
+            
+            respuesta_texto = response.text
+            print(f"[DEBUG] Respuesta recibida de {modelo} (primeros 100 caracteres): {repr(respuesta_texto[:100])}")
+            
+            match_xml = re.search(r"```xml\s*(.*?)\s*```", respuesta_texto, re.DOTALL)
+            if match_xml:
+                return match_xml.group(1).strip()
+            
+            if "<DatosSorteo>" in respuesta_texto:
+                return respuesta_texto.strip()
+            
+            print(f"[DEBUG] Modelo {modelo} respondió pero sin etiquetas XML válidas.")
+            
+        except Exception as e:
+            print(f"[DEBUG] Falló el modelo {modelo}. Error: {e}")
+            
+    raise RuntimeError("Ningún modelo de Gemini pudo procesar el PDF.")
 
 
-def formatear_xml(xml_string):
-    def reemplazar_modalidad(match):
-        texto = match.group(1).upper().strip()
-        if "PRIMER" in texto or ("TRADICIONAL" in texto and "SEGUNDA" not in texto):
-            return "<Modalidad>Tradicional Primer Sorteo</Modalidad>"
-        elif "SEGUNDA" in texto:
-            return "<Modalidad>Tradicional La Segunda</Modalidad>"
-        elif "REVANCHA" in texto:
-            return "<Modalidad>Revancha</Modalidad>"
-        elif "SIEMPRE" in texto or "SALE" in texto:
-            return "<Modalidad>Siempre Sale</Modalidad>"
-        elif "EXTRA" in texto:
-            return "<Modalidad>Premio Extra</Modalidad>"
-        return match.group(0)
-
-    xml_normalizado = re.sub(r"<Modalidad>(.*?)</Modalidad>", reemplazar_modalidad, xml_string, flags=re.IGNORECASE)
-
-    lineas_limpias = [line.strip() for line in xml_normalizado.splitlines() if line.strip()]
-    xml_reunido = "".join(lineas_limpias)
-    
-    dom = xml.dom.minidom.parseString(xml_reunido)
-    pretty_xml = dom.toprettyxml(indent="\t")
-    
-    lineas_filtradas = [line for line in pretty_xml.splitlines() if line.strip()]
-    return "\n".join(lineas_filtradas)
-
-
-def obtener_numero_sorteo_del_xml(xml_string):
-    if not xml_string:
-        return None
-    match = re.search(r"<Sorteo>(\d+)</Sorteo>", xml_string)
-    if match:
-        return int(match.group(1))
-    return None
-
-
-def descargar_y_procesar_con_gemini(num_sorteo):
+def descargar_y_procesar(num_sorteo):
     url = f"https://loteriasantafe.gov.ar/uploads/extractosdigitales/Extracto_Sorteo_Q6_{num_sorteo}.pdf"
-    print(f"Intentando descargar: {url}")
-    response = requests.get(url, timeout=15)
+    print(f"[DEBUG] Descargando PDF desde: {url}")
+    
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+    response = requests.get(url, headers=headers, timeout=15)
+    print(f"[DEBUG] HTTP Status PDF: {response.status_code}")
+    print(f"[DEBUG] Tamaño de respuesta: {len(response.content)} bytes")
     
     if response.status_code != 200:
-        print("Sorteo no disponible aún en el servidor de la lotería.")
-        return None, None
+        print(f"[DEBUG] El PDF del sorteo {num_sorteo} no existe o aún no fue publicado.")
+        return None
 
+    print(f"[DEBUG] PDF descargado con éxito. Enviando a Gemini...")
     xml_bruto = procesar_pdf_con_gemini(response.content, num_sorteo)
-    xml_formateado = formatear_xml(xml_bruto)
-    sorteo_real = obtener_numero_sorteo_del_xml(xml_formateado) or num_sorteo
-    
-    return sorteo_real, xml_formateado
-
-
-def actualizar_github_gist(contenido_xml):
-    clean_gist_id = limpiar_id_gist(GIST_ID)
-    if not GITHUB_TOKEN or not clean_gist_id:
-        print("Aviso: Token o Gist ID no configurado. Se guardará únicamente el archivo local.")
-        return
-
-    url = f"https://api.github.com/gists/{clean_gist_id}"
-    headers = {
-        "Authorization": f"token {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github.v3+json"
-    }
-    payload = {
-        "files": {
-            NOMBRE_ARCHIVO_GIST: {
-                "content": contenido_xml
-            }
-        }
-    }
-    
-    print("Actualizando archivo en GitHub Gist...")
-    response = requests.patch(url, json=payload, headers=headers, timeout=10)
-    
-    if response.status_code == 200:
-        print("¡Gist actualizado exitosamente!")
-    else:
-        print(f"Error al actualizar el Gist. Código HTTP: {response.status_code}")
-        print(f"Respuesta: {response.text}")
+    return xml_bruto
 
 
 if __name__ == "__main__":
     try:
-        if len(sys.argv) > 1 and sys.argv[1].isdigit():
-            nuevo = int(sys.argv[1])
-        else:
-            ultimo = obtener_ultimo_sorteo()
-            nuevo = ultimo + 1
+        ultimo = obtener_ultimo_sorteo()
+        nuevo = ultimo + 1
+        print(f"[DEBUG] Objetivo actual -> Procesar Sorteo N° {nuevo}")
         
-        print(f"Buscando y procesando Sorteo {nuevo}...")
-        sorteo_final, xml_resultado = descargar_y_procesar_con_gemini(nuevo)
+        xml_resultado = descargar_y_procesar(nuevo)
         
         if xml_resultado:
-            archivo_salida = f"Q6_{sorteo_final}.xml"
-            with open(archivo_salida, "w", encoding="utf-8") as f:
-                f.write(xml_resultado)
-                
-            print(f"XML guardado localmente: {archivo_salida}")
-            actualizar_github_gist(xml_resultado)
+            print("[DEBUG] XML generado con éxito:")
+            print(xml_resultado[:300] + "...\n(truncado)")
         else:
-            print("El sorteo especificado no pudo ser procesado o no está disponible.")
+            print(f"[DEBUG] Finalizando: El sorteo {nuevo} no está listo para descargar.")
+            
     except Exception as err:
-        print(f"Error en la ejecución general: {err}", file=sys.stderr)
+        print(f"\n[ERROR CRÍTICO CAPTURADO DEPURACIÓN]: {err}", file=sys.stderr)
+        traceback.print_exc()
         sys.exit(1)
-    else:
-        print("El sorteo especificado no pudo ser procesado.")
