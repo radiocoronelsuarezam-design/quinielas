@@ -5,7 +5,7 @@ on:
     # 22:30 Hora Argentina (UTC-3) equivale a la 01:30 UTC del día siguiente.
     # Se ejecuta los Miércoles a las 22:30 AR (Jueves 01:30 UTC) y Domingos a las 22:30 AR (Lunes 01:30 UTC).
     - cron: '30 1 * * 1,4'
-  workflow_dispatch: # Permite ejecutar el flujo manualmente desde la interfaz de GitHub
+  workflow_dispatch: # Permite ejecución manual
 
 jobs:
   procesar-sorteo:
@@ -28,6 +28,6 @@ jobs:
       - name: Ejecutar script de procesamiento
         env:
           AI_KEY: ${{ secrets.AI_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GIST_ID: ${{ secrets.GIST_ID }}
         run: python quini_6.py
