@@ -155,7 +155,6 @@ def procesar_pdf_con_gemini(pdf_bytes, num_sorteo):
     Responde ÚNICAMENTE con el código XML. No agregues bloques de markdown como ```xml ... ``` ni comentarios adicionales.
     """
     
-    # Sintaxis oficial del nuevo SDK google-genai
     response = client.models.generate_content(
         model='gemini-2.5-flash',
         contents=[
@@ -185,44 +184,49 @@ def obtener_numero_sorteo_del_xml(xml_texto):
 
 
 # ==========================================
-# DESCARGA DEL PDF VÍA CORSPROXY
+# DESCARGA DEL PDF VÍA PROXIES (FALLBACK MULTI-PROXY)
 # ==========================================
 def descargar_y_procesar(num_sorteo):
-    """Descarga el PDF del servidor de la lotería utilizando únicamente CorsProxy para evadir bloqueos de IP."""
+    """Intenta descargar el PDF probando múltiples proxies en caso de bloqueos (HTTP 403, etc.)."""
     url_directa = f"https://loteriasantafe.gov.ar/uploads/extractosdigitales/Extracto_Sorteo_Q6_{num_sorteo}.pdf"
-    
-    # Construcción de la URL pasando únicamente por CorsProxy
     url_encoded = urllib.parse.quote(url_directa, safe='')
-    url_proxy = f"https://corsproxy.io/?{url_encoded}"
-    
+
+    # Lista de proxies a intentar ordenados por fiabilidad
+    proxies = [
+        ("CorsProxy", f"https://corsproxy.io/?{url_encoded}"),
+        ("CodeTabs", f"https://api.codetabs.com/v1/proxy?quest={url_directa}"),
+        ("ThingProxy", f"https://thingproxy.freeboard.io/fetch/{url_directa}"),
+        ("AllOrigins Raw", f"https://api.allorigins.win/raw?url={url_encoded}")
+    ]
+
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         'Accept': 'application/pdf,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'es-AR,es;q=0.9,en;q=0.8'
     }
-    
-    print(f"[DEBUG] Solicitando PDF a través de CorsProxy para el sorteo N° {num_sorteo}...")
-    
-    try:
-        response = requests.get(url_proxy, headers=headers, timeout=20, allow_redirects=True)
-        print(f"[DEBUG] HTTP Status CorsProxy: {response.status_code}")
-        
-        # Validar si el contenido devuelto es realmente un PDF válido
-        if response.status_code == 200 and (response.content.startswith(b'%PDF') or len(response.content) > 5000):
-            print(f"[ÉXITO] PDF descargado correctamente ({len(response.content)} bytes). Enviando a Gemini...")
-            xml_bruto = procesar_pdf_con_gemini(response.content, num_sorteo)
-            xml_formateado = formatear_xml(xml_bruto)
-            sorteo_real = obtener_numero_sorteo_del_xml(xml_formateado) or num_sorteo
-            return sorteo_real, xml_formateado
-        elif response.status_code == 404:
-            print(f"[DEBUG] El PDF del sorteo {num_sorteo} aún no ha sido publicado en el servidor de la lotería.")
-            return None, None
-        else:
-            print(f"[AVISO] Respuesta o contenido no válido del proxy (HTTP {response.status_code}).")
-            
-    except requests.exceptions.RequestException as e:
-        print(f"[ERROR] Falló la conexión con CorsProxy: {e}")
-        
+
+    for nombre_proxy, url_proxy in proxies:
+        print(f"[DEBUG] Solicitando PDF vía {nombre_proxy} para sorteo N° {num_sorteo}...")
+        try:
+            response = requests.get(url_proxy, headers=headers, timeout=20, allow_redirects=True)
+            print(f"[DEBUG] HTTP Status {nombre_proxy}: {response.status_code}")
+
+            if response.status_code == 200 and (response.content.startswith(b'%PDF') or len(response.content) > 5000):
+                print(f"[ÉXITO] PDF descargado correctamente vía {nombre_proxy} ({len(response.content)} bytes). Enviando a Gemini...")
+                xml_bruto = procesar_pdf_con_gemini(response.content, num_sorteo)
+                xml_formateado = formatear_xml(xml_bruto)
+                sorteo_real = obtener_numero_sorteo_del_xml(xml_formateado) or num_sorteo
+                return sorteo_real, xml_formateado
+            elif response.status_code == 404:
+                print(f"[DEBUG] El PDF del sorteo {num_sorteo} aún no está publicado (HTTP 404).")
+                return None, None
+            else:
+                print(f"[AVISO] {nombre_proxy} respondió HTTP {response.status_code}. Intentando siguiente proxy...")
+
+        except requests.exceptions.RequestException as e:
+            print(f"[ERROR] Falló conexión con {nombre_proxy}: {e}")
+
+    print(f"[ERROR] Ninguno de los proxies pudo obtener el PDF para el sorteo N° {num_sorteo}.")
     return None, None
 
 
