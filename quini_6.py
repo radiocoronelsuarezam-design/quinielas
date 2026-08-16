@@ -11,7 +11,7 @@ from google.genai import types, errors
 # CONFIGURACIÓN Y CREDENCIALES (Variables de Entorno en GitHub Actions)
 # ==============================================================================
 GEMINI_API_KEY = os.getenv("AI_KEY")
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+GITHUB_TOKEN = os.getenv("GIT_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
 NOMBRE_ARCHIVO_GIST = "quini_6_resultados.xml"
 
