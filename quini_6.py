@@ -17,21 +17,19 @@ NOMBRE_ARCHIVO_GIST = "quini_6_resultados.xml"
 
 # Validar credenciales de la API de Gemini
 if not GEMINI_API_KEY:
-    raise ValueError("Error crítico: La variable de entorno AI_KEY no está configurada.")
+    print("Error crítico: La variable de entorno AI_KEY no está configurada.", file=sys.stderr)
+    sys.exit(1)
 
-# LISTA DE MODELOS VIGENTES EN ORDEN DE RESPALDO (Fallback)
 MODELOS_GEMINI = [
     "gemini-3.5-flash-lite",
     "gemini-2.5-flash-lite",
     "gemini-flash-latest"
 ]
 
-# INICIALIZACIÓN DEL CLIENTE DE GEMINI
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 
 def limpiar_id_gist(gist_input):
-    """Extrae el hash alfanumérico si se proporcionó una URL completa del Gist."""
     if not gist_input:
         return ""
     if "/" in gist_input:
@@ -40,10 +38,6 @@ def limpiar_id_gist(gist_input):
 
 
 def obtener_ultimo_sorteo():
-    """
-    Consulta el archivo XML en el Gist de GitHub para determinar
-    el número del último sorteo procesado.
-    """
     clean_gist_id = limpiar_id_gist(GIST_ID)
     if not clean_gist_id or not GITHUB_TOKEN:
         print("Aviso: GIST_ID o GITHUB_TOKEN no disponibles. Se tomará sorteo base 3389.")
@@ -64,9 +58,6 @@ def obtener_ultimo_sorteo():
 
 
 def procesar_pdf_con_gemini(pdf_bytes, num_sorteo):
-    """
-    Envía el extracto PDF en formato binario a Gemini solicitando el parseo a XML.
-    """
     prompt_instrucciones = f"""
 Eres un asistente experto en procesamiento visual de extractos oficiales de Lotería (Quini 6).
 Analiza detenidamente la imagen/layout del PDF adjunto correspondiente al sorteo de Quini 6 y genera ÚNICAMENTE el código XML formateado de acuerdo con las siguientes reglas estrictas.
@@ -183,7 +174,6 @@ REGLAS DE FORMATO NUMÉRICO:
 
 
 def formatear_xml(xml_string):
-    """Normaliza nombres de modalidades y aplica indentación limpia al XML."""
     def reemplazar_modalidad(match):
         texto = match.group(1).upper().strip()
         if "PRIMER" in texto or ("TRADICIONAL" in texto and "SEGUNDA" not in texto):
@@ -211,7 +201,6 @@ def formatear_xml(xml_string):
 
 
 def obtener_numero_sorteo_del_xml(xml_string):
-    """Extrae el número de sorteo procesado directamente desde la etiqueta XML."""
     if not xml_string:
         return None
     match = re.search(r"<Sorteo>(\d+)</Sorteo>", xml_string)
@@ -221,7 +210,6 @@ def obtener_numero_sorteo_del_xml(xml_string):
 
 
 def descargar_y_procesar_con_gemini(num_sorteo):
-    """Descarga el PDF del extracto desde la Lotería de Santa Fe y lo envía a Gemini."""
     url = f"https://loteriasantafe.gov.ar/uploads/extractosdigitales/Extracto_Sorteo_Q6_{num_sorteo}.pdf"
     print(f"Intentando descargar: {url}")
     response = requests.get(url, timeout=15)
@@ -238,7 +226,6 @@ def descargar_y_procesar_con_gemini(num_sorteo):
 
 
 def actualizar_github_gist(contenido_xml):
-    """Actualiza la información en GitHub Gist mediante API REST."""
     clean_gist_id = limpiar_id_gist(GIST_ID)
     if not GITHUB_TOKEN or not clean_gist_id:
         print("Aviso: Token o Gist ID no configurado. Se guardará únicamente el archivo local.")
@@ -268,21 +255,27 @@ def actualizar_github_gist(contenido_xml):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1].isdigit():
-        nuevo = int(sys.argv[1])
-    else:
-        ultimo = obtener_ultimo_sorteo()
-        nuevo = ultimo + 1
-    
-    print(f"Buscando y procesando Sorteo {nuevo}...")
-    sorteo_final, xml_resultado = descargar_y_procesar_con_gemini(nuevo)
-    
-    if xml_resultado:
-        archivo_salida = f"Q6_{sorteo_final}.xml"
-        with open(archivo_salida, "w", encoding="utf-8") as f:
-            f.write(xml_resultado)
-            
-        print(f"XML guardado localmente: {archivo_salida}")
-        actualizar_github_gist(xml_resultado)
+    try:
+        if len(sys.argv) > 1 and sys.argv[1].isdigit():
+            nuevo = int(sys.argv[1])
+        else:
+            ultimo = obtener_ultimo_sorteo()
+            nuevo = ultimo + 1
+        
+        print(f"Buscando y procesando Sorteo {nuevo}...")
+        sorteo_final, xml_resultado = descargar_y_procesar_con_gemini(nuevo)
+        
+        if xml_resultado:
+            archivo_salida = f"Q6_{sorteo_final}.xml"
+            with open(archivo_salida, "w", encoding="utf-8") as f:
+                f.write(xml_resultado)
+                
+            print(f"XML guardado localmente: {archivo_salida}")
+            actualizar_github_gist(xml_resultado)
+        else:
+            print("El sorteo especificado no pudo ser procesado o no está disponible.")
+    except Exception as err:
+        print(f"Error en la ejecución general: {err}", file=sys.stderr)
+        sys.exit(1)
     else:
         print("El sorteo especificado no pudo ser procesado.")
