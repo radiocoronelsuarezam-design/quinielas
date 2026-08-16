@@ -2,7 +2,6 @@ import os
 import re
 import sys
 import time
-import urllib.parse
 import requests
 from google import genai
 
@@ -10,18 +9,16 @@ from google import genai
 # CONFIGURACIÓN Y VARIABLES DE ENTORNO
 # ==========================================
 AI_KEY = os.environ.get("AI_KEY")
-GITHUB_TOKEN = os.environ.get("GIT_TOKEN")
+GITHUB_TOKEN = os.environ.get("GIT_TOKEN") or os.environ.get("GITHUB_TOKEN")
 GIST_ID = os.environ.get("GIST_ID")
 
 NOMBRE_ARCHIVO_GIST = "quini_6_resultados.xml"
 SORTEO_BASE_INICIAL = 3389
 
-# Inicializar Cliente de Gemini si existe la API Key
 client = genai.Client(api_key=AI_KEY) if AI_KEY else None
 
 
 def limpiar_id_gist(gist_id):
-    """Extrae únicamente el hash del Gist si se pasó una URL completa."""
     if not gist_id:
         return ""
     gist_id = gist_id.strip()
@@ -34,7 +31,6 @@ def limpiar_id_gist(gist_id):
 # GESTIÓN DE GITHUB GIST
 # ==========================================
 def obtener_ultimo_sorteo():
-    """Consulta el archivo XML almacenado en el Gist para obtener el último número de sorteo procesado."""
     clean_gist_id = limpiar_id_gist(GIST_ID)
     if not clean_gist_id or not GITHUB_TOKEN:
         print("[AVISO] GIST_ID o GIT_TOKEN no disponibles. Se asumirá el sorteo base inicial.")
@@ -60,11 +56,9 @@ def obtener_ultimo_sorteo():
                     sorteo = int(match.group(1))
                     print(f"[DEBUG] Último sorteo registrado en Gist: {sorteo}")
                     return sorteo
-            print(f"[DEBUG] El archivo '{NOMBRE_ARCHIVO_GIST}' aún no existe en el Gist. Se iniciará desde el base.")
-        elif response.status_code == 404:
-            print("[DEBUG] El Gist especificado no fue encontrado o está vacío. Se asumirá el sorteo base.")
+            print(f"[DEBUG] El archivo '{NOMBRE_ARCHIVO_GIST}' aún no existe en el Gist.")
         else:
-            print(f"[AVISO] No se pudo leer el Gist (HTTP {response.status_code}): {response.text}")
+            print(f"[AVISO] No se pudo leer el Gist (HTTP {response.status_code})")
     except Exception as e:
         print(f"[AVISO] Excepción al consultar el Gist: {e}")
         
@@ -72,9 +66,7 @@ def obtener_ultimo_sorteo():
 
 
 def actualizar_github_gist(contenido_xml):
-    """Actualiza el archivo en GitHub Gist con el contenido XML procesado."""
     clean_gist_id = limpiar_id_gist(GIST_ID)
-    
     if not GITHUB_TOKEN or not clean_gist_id:
         print("[AVISO] Token o Gist ID no configurado. Se omite la actualización del Gist.")
         return False
@@ -93,17 +85,13 @@ def actualizar_github_gist(contenido_xml):
         }
     }
     
-    print(f"[DEBUG] Enviando PATCH a API de GitHub Gist: {url}")
     try:
         response = requests.patch(url, json=payload, headers=headers, timeout=15)
-        print(f"[DEBUG] Status Code Respuesta Gist: {response.status_code}")
-        
         if response.status_code == 200:
             print("[ÉXITO] Gist actualizado correctamente en GitHub.")
             return True
         else:
             print(f"[ERROR] Falló la actualización del Gist: HTTP {response.status_code}")
-            print(f"[ERROR Detalle]: {response.text}")
             return False
     except Exception as e:
         print(f"[ERROR] Excepción al actualizar el Gist: {e}")
@@ -111,12 +99,10 @@ def actualizar_github_gist(contenido_xml):
 
 
 # ==========================================
-# PROCESAMIENTO CON GEMINI (SDK google-genai)
+# PROCESAMIENTO CON GEMINI
 # ==========================================
 def procesar_pdf_con_gemini(pdf_bytes, num_sorteo):
-    """Envia el PDF a Gemini usando el nuevo cliente google-genai."""
-    print(f"[DEBUG] Procesando el PDF del sorteo N° {num_sorteo} con Gemini...")
-    
+    print(f"[DEBUG] Procesando PDF con Gemini para sorteo {num_sorteo}...")
     prompt = f"""
     Analiza detalladamente este extracto oficial de Quini 6 (Sorteo N° {num_sorteo}).
     Extrae todos los resultados y genera un documento XML estricto con la siguiente estructura:
@@ -152,7 +138,7 @@ def procesar_pdf_con_gemini(pdf_bytes, num_sorteo):
       </Modalidades>
     </Quini6>
 
-    Responde ÚNICAMENTE con el código XML. No agregues bloques de markdown como ```xml ... ``` ni comentarios adicionales.
+    Responde ÚNICAMENTE con el código XML sin bloques de markdown.
     """
     
     response = client.models.generate_content(
@@ -169,64 +155,57 @@ def procesar_pdf_con_gemini(pdf_bytes, num_sorteo):
 
 
 def formatear_xml(xml_texto):
-    """Limpia etiquetas de markdown sobrantes que Gemini pueda incluir."""
     xml_limpio = re.sub(r"^```xml\s*", "", xml_texto, flags=re.MULTILINE)
     xml_limpio = re.sub(r"^```\s*", "", xml_limpio, flags=re.MULTILINE)
     return xml_limpio.strip()
 
 
 def obtener_numero_sorteo_del_xml(xml_texto):
-    """Extrae el número de sorteo presente dentro del XML procesado."""
     match = re.search(r"<Sorteo>(\d+)</Sorteo>", xml_texto)
-    if match:
-        return int(match.group(1))
+    return int(match.group(1)) if match else None
+
+
+# ==========================================
+# DESCARGA DIRECTA (SESIÓN NAVEGADOR)
+# ==========================================
+def descargar_pdf_directo(num_sorteo):
+    """Realiza la descarga directa del PDF con una sesión de solicitudes simulando navegador."""
+    url = f"https://loteriasantafe.gov.ar/uploads/extractosdigitales/Extracto_Sorteo_Q6_{num_sorteo}.pdf"
+    
+    session = requests.Session()
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'es-AR,es;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Referer': 'https://loteriasantafe.gov.ar/'
+    }
+    
+    print(f"[DEBUG] Solicitando PDF directo para sorteo N° {num_sorteo}...")
+    try:
+        # Petición previa para establecer cookies del servidor si las requiere
+        session.get("https://loteriasantafe.gov.ar/", headers=headers, timeout=10)
+        response = session.get(url, headers=headers, timeout=20)
+        
+        print(f"[DEBUG] HTTP Status Conexión Directa: {response.status_code}")
+        if response.status_code == 200 and response.content.startswith(b'%PDF'):
+            return response.content
+        elif response.status_code == 404:
+            print(f"[DEBUG] El PDF del sorteo {num_sorteo} no existe aún en el servidor.")
+    except Exception as e:
+        print(f"[ERROR] Error al realizar conexión directa: {e}")
+        
     return None
 
 
-# ==========================================
-# DESCARGA DEL PDF VÍA PROXIES (FALLBACK MULTI-PROXY)
-# ==========================================
 def descargar_y_procesar(num_sorteo):
-    """Intenta descargar el PDF probando múltiples proxies en caso de bloqueos (HTTP 403, etc.)."""
-    url_directa = f"https://loteriasantafe.gov.ar/uploads/extractosdigitales/Extracto_Sorteo_Q6_{num_sorteo}.pdf"
-    url_encoded = urllib.parse.quote(url_directa, safe='')
-
-    # Lista de proxies a intentar ordenados por fiabilidad
-    proxies = [
-        ("CorsProxy", f"https://corsproxy.io/?{url_encoded}"),
-        ("CodeTabs", f"https://api.codetabs.com/v1/proxy?quest={url_directa}"),
-        ("ThingProxy", f"https://thingproxy.freeboard.io/fetch/{url_directa}"),
-        ("AllOrigins Raw", f"https://api.allorigins.win/raw?url={url_encoded}")
-    ]
-
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Accept': 'application/pdf,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'es-AR,es;q=0.9,en;q=0.8'
-    }
-
-    for nombre_proxy, url_proxy in proxies:
-        print(f"[DEBUG] Solicitando PDF vía {nombre_proxy} para sorteo N° {num_sorteo}...")
-        try:
-            response = requests.get(url_proxy, headers=headers, timeout=20, allow_redirects=True)
-            print(f"[DEBUG] HTTP Status {nombre_proxy}: {response.status_code}")
-
-            if response.status_code == 200 and (response.content.startswith(b'%PDF') or len(response.content) > 5000):
-                print(f"[ÉXITO] PDF descargado correctamente vía {nombre_proxy} ({len(response.content)} bytes). Enviando a Gemini...")
-                xml_bruto = procesar_pdf_con_gemini(response.content, num_sorteo)
-                xml_formateado = formatear_xml(xml_bruto)
-                sorteo_real = obtener_numero_sorteo_del_xml(xml_formateado) or num_sorteo
-                return sorteo_real, xml_formateado
-            elif response.status_code == 404:
-                print(f"[DEBUG] El PDF del sorteo {num_sorteo} aún no está publicado (HTTP 404).")
-                return None, None
-            else:
-                print(f"[AVISO] {nombre_proxy} respondió HTTP {response.status_code}. Intentando siguiente proxy...")
-
-        except requests.exceptions.RequestException as e:
-            print(f"[ERROR] Falló conexión con {nombre_proxy}: {e}")
-
-    print(f"[ERROR] Ninguno de los proxies pudo obtener el PDF para el sorteo N° {num_sorteo}.")
+    pdf_bytes = descargar_pdf_directo(num_sorteo)
+    
+    if pdf_bytes:
+        xml_bruto = procesar_pdf_con_gemini(pdf_bytes, num_sorteo)
+        xml_formateado = formatear_xml(xml_bruto)
+        sorteo_real = obtener_numero_sorteo_del_xml(xml_formateado) or num_sorteo
+        return sorteo_real, xml_formateado
+        
     return None, None
 
 
@@ -235,31 +214,25 @@ def descargar_y_procesar(num_sorteo):
 # ==========================================
 def main():
     print("=== INICIANDO PROCESAMIENTO DE QUINI 6 ===")
-    print(f"[DEBUG] AI_KEY configurada: {bool(AI_KEY)}")
-    print(f"[DEBUG] GIT_TOKEN configurado: {bool(GITHUB_TOKEN)}")
-    print(f"[DEBUG] GIST_ID configurado: {bool(GIST_ID)}")
-    
     if not AI_KEY:
         print("[ERROR CRÍTICO] La variable AI_KEY no está configurada. Abortando.")
         sys.exit(1)
         
-    # 1. Obtener el último sorteo que tenemos procesado en el Gist
     ultimo_sorteo_registrado = obtener_ultimo_sorteo()
     sorteo_a_buscar = ultimo_sorteo_registrado + 1
     
     print(f"[DEBUG] Sorteo a procesar: N° {sorteo_a_buscar}")
     
-    # 2. Descargar y procesar el nuevo extracto PDF
     sorteo_procesado, xml_resultado = descargar_y_procesar(sorteo_a_buscar)
     
     if xml_resultado:
         print(f"[ÉXITO] Sorteo {sorteo_procesado} procesado exitosamente por la AI.")
-        # 3. Actualizar el contenido en GitHub Gist
         actualizar_github_gist(xml_resultado)
     else:
-        print(f"[INFO] El sorteo {sorteo_a_buscar} no está disponible todavía en el servidor de la lotería.")
+        print(f"[INFO] El PDF del sorteo {sorteo_a_buscar} no se pudo obtener directamente.")
         
-    print("=== FINALIZADO SIN ERRORES ===")
+    print("=== FINALIZADO ===")
+
 
 if __name__ == "__main__":
     main()
