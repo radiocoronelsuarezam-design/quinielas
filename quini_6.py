@@ -4,7 +4,7 @@ import sys
 import time
 import urllib.parse
 import requests
-import google.generativeai as genai
+from google import genai
 
 # ==========================================
 # CONFIGURACIÓN Y VARIABLES DE ENTORNO
@@ -16,9 +16,8 @@ GIST_ID = os.environ.get("GIST_ID")
 NOMBRE_ARCHIVO_GIST = "quini_6_resultados.xml"
 SORTEO_BASE_INICIAL = 3389
 
-# Configurar SDK de Gemini si el API Key está presente
-if AI_KEY:
-    genai.configure(api_key=AI_KEY)
+# Inicializar Cliente de Gemini si existe la API Key
+client = genai.Client(api_key=AI_KEY) if AI_KEY else None
 
 
 def limpiar_id_gist(gist_id):
@@ -112,13 +111,11 @@ def actualizar_github_gist(contenido_xml):
 
 
 # ==========================================
-# PROCESAMIENTO DE CONTEXTO Y GEMINI
+# PROCESAMIENTO CON GEMINI (SDK google-genai)
 # ==========================================
 def procesar_pdf_con_gemini(pdf_bytes, num_sorteo):
-    """Envia el PDF a Gemini 1.5 Pro/Flash para extraer los resultados en XML."""
+    """Envia el PDF a Gemini usando el nuevo cliente google-genai."""
     print(f"[DEBUG] Procesando el PDF del sorteo N° {num_sorteo} con Gemini...")
-    
-    model = genai.GenerativeModel('gemini-1.5-flash')
     
     prompt = f"""
     Analiza detalladamente este extracto oficial de Quini 6 (Sorteo N° {num_sorteo}).
@@ -158,12 +155,17 @@ def procesar_pdf_con_gemini(pdf_bytes, num_sorteo):
     Responde ÚNICAMENTE con el código XML. No agregues bloques de markdown como ```xml ... ``` ni comentarios adicionales.
     """
     
-    pdf_part = {
-        "mime_type": "application/pdf",
-        "data": pdf_bytes
-    }
-    
-    response = model.generate_content([prompt, pdf_part])
+    # Sintaxis oficial del nuevo SDK google-genai
+    response = client.models.generate_content(
+        model='gemini-2.5-flash',
+        contents=[
+            genai.types.Part.from_bytes(
+                data=pdf_bytes,
+                mime_type='application/pdf'
+            ),
+            prompt
+        ]
+    )
     return response.text.strip()
 
 
