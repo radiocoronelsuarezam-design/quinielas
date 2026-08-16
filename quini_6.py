@@ -1,25 +1,23 @@
-import io
 import os
 import re
 import sys
 import time
-import xml.etree.ElementTree as ET
 import xml.dom.minidom
 import requests
 from google import genai
 from google.genai import types, errors
 
 # ==============================================================================
-# CONFIGURACIÓN Y CREDENCIALES (Obtenidas desde GitHub Secrets)
+# CONFIGURACIÓN Y CREDENCIALES (Variables de Entorno en GitHub Actions)
 # ==============================================================================
 GEMINI_API_KEY = os.getenv("AI_KEY")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
 NOMBRE_ARCHIVO_GIST = "quini_6_resultados.xml"
 
-# Validar que las variables críticas estén presentes
+# Validar credenciales de la API de Gemini
 if not GEMINI_API_KEY:
-    raise ValueError("Error: La variable de entorno AI_KEY no está configurada.")
+    raise ValueError("Error crítico: La variable de entorno AI_KEY no está configurada.")
 
 # LISTA DE MODELOS VIGENTES EN ORDEN DE RESPALDO (Fallback)
 MODELOS_GEMINI = [
@@ -33,7 +31,7 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 
 
 def limpiar_id_gist(gist_input):
-    """Extrae el hash alfanumérico si se pegó una URL completa."""
+    """Extrae el hash alfanumérico si se proporcionó una URL completa del Gist."""
     if not gist_input:
         return ""
     if "/" in gist_input:
@@ -43,12 +41,12 @@ def limpiar_id_gist(gist_input):
 
 def obtener_ultimo_sorteo():
     """
-    Consulta el archivo XML almacenado en el Gist de GitHub
-    para obtener el último número de sorteo procesado.
+    Consulta el archivo XML en el Gist de GitHub para determinar
+    el número del último sorteo procesado.
     """
     clean_gist_id = limpiar_id_gist(GIST_ID)
     if not clean_gist_id or not GITHUB_TOKEN:
-        print("Aviso: GIST_ID o GITHUB_TOKEN no configurados. Se tomará valor base.")
+        print("Aviso: GIST_ID o GITHUB_TOKEN no disponibles. Se tomará sorteo base 3389.")
         return 3389
 
     url = f"https://api.github.com/gists/{clean_gist_id}"
@@ -61,13 +59,13 @@ def obtener_ultimo_sorteo():
             if match:
                 return int(match.group(1))
     except Exception as e:
-        print(f"No se pudo consultar el Gist para el último sorteo: {e}")
+        print(f"No se pudo consultar el Gist para obtener el último sorteo: {e}")
     return 3389
 
 
 def procesar_pdf_con_gemini(pdf_bytes, num_sorteo):
     """
-    Envía el PDF en binario a Google Gemini recorriendo la lista de modelos.
+    Envía el extracto PDF en formato binario a Gemini solicitando el parseo a XML.
     """
     prompt_instrucciones = f"""
 Eres un asistente experto en procesamiento visual de extractos oficiales de Lotería (Quini 6).
@@ -166,26 +164,26 @@ REGLAS DE FORMATO NUMÉRICO:
                     print(f"¡Éxito obtenido con {modelo}!")
                     return respuesta_texto.strip()
                 
-                print(f"El modelo {modelo} respondió pero sin el formato XML válido.")
+                print(f"El modelo {modelo} respondió pero sin la estructura XML requerida.")
                 
             except (errors.ServerError, errors.ClientError) as e:
-                print(f"Aviso con modelo {modelo}: {e}")
+                print(f"Aviso en {modelo}: {e}")
                 if ("503" in str(e) or "429" in str(e)) and intento < max_intentos_por_modelo - 1:
-                    print("Esperando 5 segundos para reintentar el mismo modelo...")
+                    print("Reintentando en 5 segundos...")
                     time.sleep(5)
                 else:
-                    print("Pasando al siguiente modelo de respaldo...")
+                    print("Pasando al siguiente modelo disponible...")
                     break
                     
             except Exception as e:
                 print(f"Error inesperado con {modelo}: {e}")
                 break
 
-    raise RuntimeError("Todos los modelos de Gemini fallaron o no están disponibles.")
+    raise RuntimeError("Todos los modelos de Gemini fallaron o no están disponibles en este momento.")
 
 
 def formatear_xml(xml_string):
-    """Normaliza modalidades y embellece el XML."""
+    """Normaliza nombres de modalidades y aplica indentación limpia al XML."""
     def reemplazar_modalidad(match):
         texto = match.group(1).upper().strip()
         if "PRIMER" in texto or ("TRADICIONAL" in texto and "SEGUNDA" not in texto):
@@ -213,21 +211,23 @@ def formatear_xml(xml_string):
 
 
 def obtener_numero_sorteo_del_xml(xml_string):
-    """Extrae el número de sorteo real desde el XML generado."""
-    match = re.search(r"<Sorteo>(\d+)</Sorteo>", match_text if (match_text := xml_string) else "")
+    """Extrae el número de sorteo procesado directamente desde la etiqueta XML."""
+    if not xml_string:
+        return None
+    match = re.search(r"<Sorteo>(\d+)</Sorteo>", xml_string)
     if match:
         return int(match.group(1))
     return None
 
 
 def descargar_y_procesar_con_gemini(num_sorteo):
-    """Descarga el PDF desde la Lotería de Santa Fe y solicita la extracción a Gemini."""
+    """Descarga el PDF del extracto desde la Lotería de Santa Fe y lo envía a Gemini."""
     url = f"https://loteriasantafe.gov.ar/uploads/extractosdigitales/Extracto_Sorteo_Q6_{num_sorteo}.pdf"
     print(f"Intentando descargar: {url}")
     response = requests.get(url, timeout=15)
     
     if response.status_code != 200:
-        print("Sorteo no disponible aún.")
+        print("Sorteo no disponible aún en el servidor de la lotería.")
         return None, None
 
     xml_bruto = procesar_pdf_con_gemini(response.content, num_sorteo)
@@ -238,10 +238,10 @@ def descargar_y_procesar_con_gemini(num_sorteo):
 
 
 def actualizar_github_gist(contenido_xml):
-    """Actualiza el archivo en GitHub Gist vía API REST."""
+    """Actualiza la información en GitHub Gist mediante API REST."""
     clean_gist_id = limpiar_id_gist(GIST_ID)
     if not GITHUB_TOKEN or not clean_gist_id:
-        print("Aviso: Token o Gist ID no configurado. XML generado únicamente a nivel local.")
+        print("Aviso: Token o Gist ID no configurado. Se guardará únicamente el archivo local.")
         return
 
     url = f"https://api.github.com/gists/{clean_gist_id}"
@@ -274,7 +274,7 @@ if __name__ == "__main__":
         ultimo = obtener_ultimo_sorteo()
         nuevo = ultimo + 1
     
-    print(f"Buscando y procesando Sorteo {nuevo} con Gemini...")
+    print(f"Buscando y procesando Sorteo {nuevo}...")
     sorteo_final, xml_resultado = descargar_y_procesar_con_gemini(nuevo)
     
     if xml_resultado:
@@ -285,4 +285,4 @@ if __name__ == "__main__":
         print(f"XML guardado localmente: {archivo_salida}")
         actualizar_github_gist(xml_resultado)
     else:
-        print("El sorteo no está disponible todavía en el servidor de la lotería.")
+        print("El sorteo especificado no pudo ser procesado.")
